@@ -1,10 +1,10 @@
 {
-  "name": "plugin-template",
+  "name": "plugin-deel",
   "build": {
     "context": ".",
     "dockerfile": "Dockerfile"
   },
-  "workspaceFolder": "/workspaces/plugin-template",
+  "workspaceFolder": "/workspaces/plugin-deel",
   "forwardPorts": [8080],
   "customizations": {
     "vscode": {
