@@ -146,7 +146,7 @@ public class ContractsList extends AbstractDeelConnection implements RunnableTas
 
         DeelPage<DeelContract> page = request(
             runContext,
-            "/rest/contracts",
+            "/contracts",
             "GET",
             params,
             CONTRACTS_PAGE_TYPE_REF

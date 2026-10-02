@@ -141,7 +141,7 @@ public class LegalEntities extends AbstractDeelConnection implements RunnableTas
 
         DeelPage<DeelLegalEntity> page = request(
             runContext,
-            "/rest/legal-entities",
+            "/legal-entities",
             "GET",
             params,
             LEGAL_ENTITIES_PAGE_TYPE_REF

@@ -95,7 +95,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
 
         DeelHrxDocumentPage page = request(
             runContext,
-            "/rest/eor/contracts/" + renderedContractId + "/hrx-documents",
+            "/eor/contracts/" + renderedContractId + "/hrx-documents",
             "GET",
             params,
             DOCUMENTS_PAGE_TYPE_REF

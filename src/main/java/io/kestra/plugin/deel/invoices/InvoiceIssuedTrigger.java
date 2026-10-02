@@ -77,7 +77,7 @@ public class InvoiceIssuedTrigger extends AbstractDeelTrigger implements Polling
         params.put("limit", 100);
         params.put("offset", 0);
 
-        DeelPage<DeelInvoice> page = request(runContext, "/rest/invoices", "GET", params, INVOICES_PAGE_TYPE_REF);
+        DeelPage<DeelInvoice> page = request(runContext, "/invoices", "GET", params, INVOICES_PAGE_TYPE_REF);
         List<DeelInvoice> invoices = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
 
         invoices.sort(Comparator

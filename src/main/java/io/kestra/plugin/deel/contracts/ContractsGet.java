@@ -64,7 +64,7 @@ public class ContractsGet extends AbstractDeelConnection implements RunnableTask
 
         DeelContract contract = request(
             runContext,
-            "/rest/v2/contracts/" + renderedContractId,
+            "/v2/contracts/" + renderedContractId,
             "GET",
             Map.of(),
             CONTRACT_TYPE_REF

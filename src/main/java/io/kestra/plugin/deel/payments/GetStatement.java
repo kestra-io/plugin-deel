@@ -65,7 +65,7 @@ public class GetStatement extends AbstractDeelConnection implements RunnableTask
 
         DeelPaymentStatementResponse response = request(
             runContext,
-            "/rest/payments/statements/" + renderedId,
+            "/payments/statements/" + renderedId,
             "GET",
             Map.of(),
             STATEMENT_TYPE_REF

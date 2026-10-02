@@ -140,7 +140,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
 
         DeelPage<DeelTimesheet> page = request(
             runContext,
-            "/rest/timesheets",
+            "/timesheets",
             "GET",
             params,
             TIMESHEETS_PAGE_TYPE_REF

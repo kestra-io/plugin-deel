@@ -69,7 +69,7 @@ public class Teams extends AbstractDeelConnection implements RunnableTask<Teams.
 
         DeelListResponse<DeelTeam> response = request(
             runContext,
-            "/rest/teams",
+            "/teams",
             "GET",
             Map.of(),
             TEAMS_TYPE_REF

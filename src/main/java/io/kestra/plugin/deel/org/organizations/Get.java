@@ -52,7 +52,7 @@ public class Get extends AbstractDeelConnection implements RunnableTask<Get.Outp
 
         DeelListResponse<DeelOrganization> response = request(
             runContext,
-            "/rest/organizations",
+            "/organizations",
             "GET",
             Map.of(),
             ORGANIZATIONS_TYPE_REF

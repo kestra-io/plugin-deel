@@ -79,7 +79,7 @@ public class CostCenters extends AbstractDeelConnection implements RunnableTask<
 
         DeelListResponse<DeelCostCenter> response = request(
             runContext,
-            "/rest/legal-entities/" + renderedLegalEntityId + "/cost-centers",
+            "/legal-entities/" + renderedLegalEntityId + "/cost-centers",
             "GET",
             Map.of(),
             COST_CENTERS_TYPE_REF

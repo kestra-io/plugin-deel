@@ -55,13 +55,13 @@ public class MockDeelController {
         return respond();
     }
 
-    @Get("/rest/contracts")
+    @Get("/contracts")
     public HttpResponse<?> listContracts(HttpRequest<?> request) {
         capture(request);
         return respond();
     }
 
-    @Get("/rest/v2/contracts/{contractId}")
+    @Get("/v2/contracts/{contractId}")
     public HttpResponse<?> getContract(HttpRequest<?> request, String contractId) {
         capture(request);
         return respond();
@@ -73,109 +73,103 @@ public class MockDeelController {
         return respond();
     }
 
-    @Get("/rest/invoices")
+    @Get("/invoices")
     public HttpResponse<?> listInvoices(HttpRequest<?> request) {
         capture(request);
         return respond();
     }
 
-    @Get("/rest/invoices/deel")
+    @Get("/invoices/deel")
     public HttpResponse<?> listDeelInvoices(HttpRequest<?> request) {
         capture(request);
         return respond();
     }
 
-    @Get("/rest/payments/statements/{paymentStatementId}")
+    @Get("/payments/statements/{paymentStatementId}")
     public HttpResponse<?> getPaymentStatement(HttpRequest<?> request, String paymentStatementId) {
         capture(request);
         return respond();
     }
 
-    @Get("/v2/timesheets")
+    @Get("/timesheets")
     public HttpResponse<?> listTimesheets(HttpRequest<?> request) {
         capture(request);
         return respond();
     }
 
-    @Get("/rest/timesheets")
-    public HttpResponse<?> listTimesheetsRest(HttpRequest<?> request) {
-        capture(request);
-        return respond();
-    }
-
-    @Get("/rest/time_offs/profile/{hrisProfileId}")
+    @Get("/time_offs/profile/{hrisProfileId}")
     public HttpResponse<?> listTimeOffs(HttpRequest<?> request, String hrisProfileId) {
         capture(request);
         return respond();
     }
 
-    @Get("/rest/organizations")
+    @Get("/organizations")
     public HttpResponse<?> getOrganizations(HttpRequest<?> request) {
         capture(request);
         return respond();
     }
 
-    @Get("/rest/legal-entities")
+    @Get("/legal-entities")
     public HttpResponse<?> listLegalEntities(HttpRequest<?> request) {
         capture(request);
         return respond();
     }
 
-    @Get("/rest/legal-entities/{legalEntityId}/cost-centers")
+    @Get("/legal-entities/{legalEntityId}/cost-centers")
     public HttpResponse<?> listCostCenters(HttpRequest<?> request, String legalEntityId) {
         capture(request);
         return respond();
     }
 
-    @Get("/rest/departments")
+    @Get("/departments")
     public HttpResponse<?> listDepartments(HttpRequest<?> request) {
         capture(request);
         return respond();
     }
 
-    @Get("/rest/teams")
+    @Get("/teams")
     public HttpResponse<?> listTeams(HttpRequest<?> request) {
         capture(request);
         return respond();
     }
 
-    @Get("/rest/managers")
+    @Get("/managers")
     public HttpResponse<?> listManagers(HttpRequest<?> request) {
         capture(request);
         return respond();
     }
 
-    @Get("/rest/lookups/countries")
+    @Get("/lookups/countries")
     public HttpResponse<?> listCountries(HttpRequest<?> request) {
         capture(request);
         return respond();
     }
 
-    @Get("/rest/lookups/currencies")
+    @Get("/lookups/currencies")
     public HttpResponse<?> listCurrencies(HttpRequest<?> request) {
         capture(request);
         return respond();
     }
 
-    @Get("/rest/lookups/job-titles")
+    @Get("/lookups/job-titles")
     public HttpResponse<?> listJobTitles(HttpRequest<?> request) {
         capture(request);
         return respond();
     }
 
-    @Get("/rest/lookups/seniorities")
+    @Get("/lookups/seniorities")
     public HttpResponse<?> listSeniorities(HttpRequest<?> request) {
         capture(request);
         return respond();
     }
 
-    @Get("/rest/eor/contracts/{contractId}/hrx-documents")
+    @Get("/eor/contracts/{contractId}/hrx-documents")
     public HttpResponse<?> listHrxDocuments(HttpRequest<?> request, String contractId) {
         capture(request);
         return respond();
     }
 
-    @Get("/rest/eor/contracts/{contractId}/hrx-documents/{documentId}")
+    @Get("/eor/contracts/{contractId}/hrx-documents/{documentId}")
     public HttpResponse<?> downloadHrxDocument(HttpRequest<?> request, String contractId, String documentId) {
         capture(request);
         return respond();

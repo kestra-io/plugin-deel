@@ -69,7 +69,7 @@ public class Departments extends AbstractDeelConnection implements RunnableTask<
 
         DeelListResponse<DeelDepartment> response = request(
             runContext,
-            "/rest/departments",
+            "/departments",
             "GET",
             Map.of(),
             DEPARTMENTS_TYPE_REF

@@ -122,7 +122,7 @@ public class Get extends AbstractDeelConnection implements RunnableTask<Get.Outp
     private List<Map<String, Object>> fetchCountries(RunContext runContext, Logger logger) throws Exception {
         DeelListResponse<DeelCountry> response = request(
             runContext,
-            "/rest/lookups/countries",
+            "/lookups/countries",
             "GET",
             Map.of(),
             COUNTRIES_TYPE_REF
@@ -149,7 +149,7 @@ public class Get extends AbstractDeelConnection implements RunnableTask<Get.Outp
     private List<Map<String, Object>> fetchCurrencies(RunContext runContext, Logger logger) throws Exception {
         DeelListResponse<DeelCurrency> response = request(
             runContext,
-            "/rest/lookups/currencies",
+            "/lookups/currencies",
             "GET",
             Map.of(),
             CURRENCIES_TYPE_REF
@@ -174,7 +174,7 @@ public class Get extends AbstractDeelConnection implements RunnableTask<Get.Outp
 
         DeelPage<DeelJobTitle> page = request(
             runContext,
-            "/rest/lookups/job-titles",
+            "/lookups/job-titles",
             "GET",
             params,
             JOB_TITLES_TYPE_REF
@@ -199,7 +199,7 @@ public class Get extends AbstractDeelConnection implements RunnableTask<Get.Outp
 
         DeelListResponse<DeelSeniority> response = request(
             runContext,
-            "/rest/lookups/seniorities",
+            "/lookups/seniorities",
             "GET",
             params,
             SENIORITIES_TYPE_REF

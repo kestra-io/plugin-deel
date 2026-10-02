@@ -76,7 +76,7 @@ public class Download extends AbstractDeelConnection implements RunnableTask<Dow
 
         DeelHrxDownloadResponse response = request(
             runContext,
-            "/rest/eor/contracts/" + renderedContractId + "/hrx-documents/" + renderedDocumentId,
+            "/eor/contracts/" + renderedContractId + "/hrx-documents/" + renderedDocumentId,
             "GET",
             Map.of(),
             DOWNLOAD_TYPE_REF

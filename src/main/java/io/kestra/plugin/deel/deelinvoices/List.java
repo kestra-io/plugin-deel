@@ -94,7 +94,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
 
         DeelPage<DeelDeelInvoice> page = request(
             runContext,
-            "/rest/invoices/deel",
+            "/invoices/deel",
             "GET",
             params,
             DEEL_INVOICES_PAGE_TYPE_REF

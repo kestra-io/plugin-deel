@@ -132,7 +132,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
 
         DeelTimeOffPage page = request(
             runContext,
-            "/rest/time_offs/profile/" + renderedProfileId,
+            "/time_offs/profile/" + renderedProfileId,
             "GET",
             params,
             TIME_OFF_PAGE_TYPE_REF

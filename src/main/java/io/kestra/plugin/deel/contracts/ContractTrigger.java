@@ -122,7 +122,7 @@ public class ContractTrigger extends AbstractDeelTrigger implements PollingTrigg
             params.put("updated_since", state.getWatermark());
         }
 
-        DeelPage<DeelContract> page = request(runContext, "/rest/contracts", "GET", params, CONTRACTS_PAGE_TYPE_REF);
+        DeelPage<DeelContract> page = request(runContext, "/contracts", "GET", params, CONTRACTS_PAGE_TYPE_REF);
         List<DeelContract> contracts = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
 
         contracts.sort(Comparator

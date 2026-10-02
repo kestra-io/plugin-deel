@@ -95,7 +95,7 @@ public class Managers extends AbstractDeelConnection implements RunnableTask<Man
 
         DeelPage<DeelManager> page = request(
             runContext,
-            "/rest/managers",
+            "/managers",
             "GET",
             params,
             MANAGERS_PAGE_TYPE_REF
