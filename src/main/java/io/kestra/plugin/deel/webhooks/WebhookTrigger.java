@@ -60,6 +60,7 @@ import javax.crypto.spec.SecretKeySpec;
                 triggers:
                   - id: deel_webhook
                     type: io.kestra.plugin.deel.webhooks.WebhookTrigger
+                    key: "deel-webhook"
                     secretSigningKey: "{{ secret('DEEL_WEBHOOK_SIGNING_KEY') }}"
                     events:
                       - contract.created

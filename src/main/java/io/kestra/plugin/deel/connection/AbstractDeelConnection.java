@@ -69,8 +69,6 @@ public abstract class AbstractDeelConnection {
     @Builder.Default
     private Property<String> apiVersion = Property.ofValue(DEFAULT_API_VERSION);
 
-    protected transient String testBaseUrl;
-
     protected HttpClient createClient(RunContext runContext) throws Exception {
         String renderedBaseUrl = runContext.render(this.baseUrl).as(String.class).orElse(DEFAULT_BASE_URL);
         String renderedToken = runContext.render(this.apiToken).as(String.class).orElseThrow();
@@ -123,45 +121,26 @@ public abstract class AbstractDeelConnection {
      * Execute an HTTP request and deserialize the response using a TypeReference to preserve generic type information.
      * This method avoids type erasure issues with generic types like DeelPage<DeelPerson>.
      */
+    @SuppressWarnings("unchecked")
     protected <T> T request(RunContext runContext, String path, String method, Map<String, Object> queryParams, TypeReference<T> typeRef) throws Exception {
-        HttpClient client = createClient(runContext);
-        String renderedBaseUrl = runContext.render(this.baseUrl).as(String.class).orElse(DEFAULT_BASE_URL);
-        String renderedApiVersion = runContext.render(this.apiVersion).as(String.class).orElse(DEFAULT_API_VERSION);
-        URI uri = buildUri(renderedBaseUrl, path, queryParams);
+        try (HttpClient client = createClient(runContext)) {
+            String renderedBaseUrl = runContext.render(this.baseUrl).as(String.class).orElse(DEFAULT_BASE_URL);
+            String renderedApiVersion = runContext.render(this.apiVersion).as(String.class).orElse(DEFAULT_API_VERSION);
+            URI uri = buildUri(renderedBaseUrl, path, queryParams);
 
-        HttpRequest request = HttpRequest.builder()
-            .method(method)
-            .uri(uri)
-            .addHeader(API_VERSION_HEADER, renderedApiVersion)
-            .build();
+            HttpRequest request = HttpRequest.builder()
+                .method(method)
+                .uri(uri)
+                .addHeader(API_VERSION_HEADER, renderedApiVersion)
+                .build();
 
-        try {
-            // Use the HttpClient overload that returns raw response, then deserialize with TypeReference
-            HttpResponse<String> response = client.request(request, String.class);
-            return handleResponse(response, typeRef);
-        } catch (HttpClientException e) {
-            throw handleErrorResponse(e);
-        }
-    }
-
-    protected <T> T requestWithBody(RunContext runContext, String path, String method, Object body, Map<String, Object> queryParams, TypeReference<T> typeRef) throws Exception {
-        HttpClient client = createClient(runContext);
-        String renderedBaseUrl = runContext.render(this.baseUrl).as(String.class).orElse(DEFAULT_BASE_URL);
-        String renderedApiVersion = runContext.render(this.apiVersion).as(String.class).orElse(DEFAULT_API_VERSION);
-        URI uri = buildUri(renderedBaseUrl, path, queryParams);
-
-        HttpRequest request = HttpRequest.builder()
-            .method(method)
-            .uri(uri)
-            .addHeader(API_VERSION_HEADER, renderedApiVersion)
-            .body(HttpRequest.JsonRequestBody.of(body))
-            .build();
-
-        try {
-            HttpResponse<String> response = client.request(request, String.class);
-            return handleResponse(response, typeRef);
-        } catch (HttpClientException e) {
-            throw handleErrorResponse(e);
+            try {
+                // Use the HttpClient overload that returns raw response, then deserialize with TypeReference
+                HttpResponse<String> response = client.request(request, String.class);
+                return handleResponse(response, typeRef);
+            } catch (HttpClientException e) {
+                throw handleErrorResponse(e);
+            }
         }
     }
 
@@ -196,61 +175,4 @@ public abstract class AbstractDeelConnection {
         return new IllegalStateException(message, e);
     }
 
-    protected <T> List<T> requestPaginatedOffset(RunContext runContext, String path, Map<String, Object> baseParams, Function<Integer, Map<String, Object>> pageParamsMapper, TypeReference<io.kestra.plugin.deel.model.DeelPage<T>> typeRef) throws Exception {
-        List<T> allResults = new ArrayList<>();
-        int offset = 0;
-        int limit = 100;
-        boolean hasMore = true;
-
-        while (hasMore) {
-            Map<String, Object> params = new java.util.HashMap<>(baseParams);
-            params.put("limit", limit);
-            params.put("offset", offset);
-
-            Map<String, Object> pageParams = pageParamsMapper.apply(offset);
-            if (pageParams != null) {
-                params.putAll(pageParams);
-            }
-
-            io.kestra.plugin.deel.model.DeelPage<T> page = request(runContext, path, "GET", params, typeRef);
-            if (page != null && page.getData() != null && !page.getData().isEmpty()) {
-                allResults.addAll(page.getData());
-                offset += page.getData().size();
-                hasMore = page.getData().size() == limit;
-            } else {
-                hasMore = false;
-            }
-        }
-
-        return allResults;
     }
-
-    protected <T> List<T> requestPaginatedCursor(RunContext runContext, String path, Map<String, Object> baseParams, Function<String, Map<String, Object>> pageParamsMapper, TypeReference<io.kestra.plugin.deel.model.DeelPage<T>> typeRef) throws Exception {
-        List<T> allResults = new ArrayList<>();
-        String cursor = null;
-        boolean hasMore = true;
-
-        while (hasMore) {
-            Map<String, Object> params = new java.util.HashMap<>(baseParams);
-            if (cursor != null) {
-                params.put("after_cursor", cursor);
-            }
-
-            Map<String, Object> pageParams = pageParamsMapper.apply(cursor);
-            if (pageParams != null) {
-                params.putAll(pageParams);
-            }
-
-            io.kestra.plugin.deel.model.DeelPage<T> page = request(runContext, path, "GET", params, typeRef);
-            if (page != null && page.getData() != null && !page.getData().isEmpty()) {
-                allResults.addAll(page.getData());
-                cursor = page.getPage() != null ? page.getPage().getCursor() : null;
-                hasMore = cursor != null && !cursor.isBlank();
-            } else {
-                hasMore = false;
-            }
-        }
-
-        return allResults;
-    }
-}

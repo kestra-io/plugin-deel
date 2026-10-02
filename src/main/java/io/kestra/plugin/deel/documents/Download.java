@@ -5,6 +5,7 @@ import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
+import jakarta.validation.constraints.NotNull;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.deel.connection.AbstractDeelConnection;
@@ -17,11 +18,15 @@ import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.time.Duration;
 import java.util.Map;
 
 @SuperBuilder
@@ -29,7 +34,7 @@ import java.util.Map;
 @NoArgsConstructor
 @Schema(
     title = "Download EOR Contract Document",
-    description = "Download an HRX document for an EOR contract as a PDF. The API returns a pre-signed URL valid for 15 minutes; the file content is stored in Kestra storage. Requires the contracts:read and worker:read scopes."
+    description = "Download an HRX document for an EOR contract. The API returns a pre-signed URL; the file content is stored in Kestra storage. Requires the contracts:read and worker:read scopes."
 )
 @Plugin(
     examples = {
@@ -56,6 +61,7 @@ public class Download extends AbstractDeelConnection implements RunnableTask<Dow
         description = "The unique identifier of the EOR employee contract."
     )
     @PluginProperty(group = "filter")
+    @NotNull
     private Property<String> contractId;
 
     @Schema(
@@ -63,6 +69,7 @@ public class Download extends AbstractDeelConnection implements RunnableTask<Dow
         description = "The unique identifier of the document to download."
     )
     @PluginProperty(group = "filter")
+    @NotNull
     private Property<String> documentId;
 
     private static final TypeReference<DeelHrxDownloadResponse> DOWNLOAD_TYPE_REF = new TypeReference<>() {};
@@ -78,7 +85,7 @@ public class Download extends AbstractDeelConnection implements RunnableTask<Dow
             runContext,
             "/eor/contracts/" + renderedContractId + "/hrx-documents/" + renderedDocumentId,
             "GET",
-            Map.of(),
+            new java.util.HashMap<String, Object>(),
             DOWNLOAD_TYPE_REF
         );
 
@@ -89,35 +96,51 @@ public class Download extends AbstractDeelConnection implements RunnableTask<Dow
         String downloadUrl = response.getData().getUrl();
         logger.debug("Downloading document {} for contract {}", renderedDocumentId, renderedContractId);
 
-        byte[] content = downloadBytes(downloadUrl);
+        // Use document ID as basis for filename, with generic extension
+        // The API may return different file types, so we use a generic approach
+        String fileName = "contract-" + renderedDocumentId.replace("-", "").substring(0, 8);
+        String fileExtension = "bin";
 
-        File tempFile = runContext.workingDir().createTempFile(".pdf").toFile();
-        Files.write(tempFile.toPath(), content);
-        URI uri = runContext.storage().putFile(tempFile);
+        File tempFile = runContext.workingDir().createTempFile(fileName + "." + fileExtension).toFile();
+        Path tempPath = tempFile.toPath();
 
-        return Output.builder()
-            .uri(uri)
-            .url(downloadUrl)
-            .contractId(renderedContractId)
-            .documentId(renderedDocumentId)
-            .size((long) content.length)
-            .build();
-    }
+        try {
+            // Download the file content using a streaming approach directly to a temp file
+            HttpClient client = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(30))
+                .build();
 
-    private byte[] downloadBytes(String downloadUrl) throws Exception {
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest httpRequest = HttpRequest.newBuilder()
-            .uri(URI.create(downloadUrl))
-            .GET()
-            .build();
+            HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(downloadUrl))
+                .timeout(Duration.ofSeconds(60))
+                .GET()
+                .build();
 
-        HttpResponse<byte[]> httpResponse = client.send(httpRequest, HttpResponse.BodyHandlers.ofByteArray());
+            HttpResponse<Path> httpResponse = client.send(
+                httpRequest,
+                HttpResponse.BodyHandlers.ofFile(tempPath)
+            );
 
-        if (httpResponse.statusCode() < 200 || httpResponse.statusCode() >= 300) {
-            throw new IllegalStateException("Document download failed with HTTP " + httpResponse.statusCode());
+            if (httpResponse.statusCode() < 200 || httpResponse.statusCode() >= 300) {
+                throw new IllegalStateException("Document download failed with HTTP " + httpResponse.statusCode());
+            }
+
+            long size = httpResponse.body().toFile().length();
+            URI uri = runContext.storage().putFile(tempFile);
+
+            return Output.builder()
+                .uri(uri)
+                .contractId(renderedContractId)
+                .documentId(renderedDocumentId)
+                .size(size)
+                .build();
+        } catch (Exception e) {
+            // Clean up temp file on failure
+            if (tempFile.exists()) {
+                tempFile.delete();
+            }
+            throw e;
         }
-
-        return httpResponse.body();
     }
 
     @Builder
@@ -126,15 +149,9 @@ public class Download extends AbstractDeelConnection implements RunnableTask<Dow
 
         @Schema(
             title = "Stored document URI",
-            description = "Kestra internal storage path to the downloaded PDF file."
+            description = "Kestra internal storage path to the downloaded file."
         )
         private URI uri;
-
-        @Schema(
-            title = "Pre-signed download URL",
-            description = "Pre-signed URL returned by the API. Valid for 15 minutes."
-        )
-        private String url;
 
         @Schema(
             title = "Contract ID",

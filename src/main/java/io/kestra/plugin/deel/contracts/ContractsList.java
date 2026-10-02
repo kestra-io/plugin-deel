@@ -14,6 +14,9 @@ import io.kestra.plugin.deel.model.DeelContract;
 import io.kestra.plugin.deel.model.DeelPagination;
 import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
+import io.kestra.core.serializers.JacksonMapper;
+import io.kestra.core.storages.kv.KVMetadata;
+import io.kestra.core.storages.kv.KVStore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -21,6 +24,8 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
 
+import java.io.File;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -157,8 +162,11 @@ public class ContractsList extends AbstractDeelConnection implements RunnableTas
 
         logger.debug("Retrieved {} contracts (total: {})", contracts.size(), pagination != null ? pagination.getTotalRows() : "unknown");
 
+        // Extract next cursor for pagination
+        String nextCursor = pagination != null && pagination.getCursor() != null ? pagination.getCursor() : null;
+
         FetchType resolvedFetchType = runContext.render(this.fetchType).as(FetchType.class).orElse(FetchType.FETCH);
-        return handleFetch(runContext, contracts, pagination, resolvedFetchType);
+        return handleFetch(runContext, contracts, pagination, resolvedFetchType, nextCursor);
     }
 
     private Map<String, Object> buildQueryParams(RunContext runContext) throws Exception {
@@ -173,7 +181,7 @@ public class ContractsList extends AbstractDeelConnection implements RunnableTas
         return params;
     }
 
-    private Output handleFetch(RunContext runContext, List<DeelContract> contracts, DeelPagination pagination, FetchType fetchType) throws Exception {
+    private Output handleFetch(RunContext runContext, List<DeelContract> contracts, DeelPagination pagination, FetchType fetchType, String nextCursor) throws Exception {
         List<Map<String, Object>> mapped = contracts.stream()
             .map(this::contractToMap)
             .toList();
@@ -183,19 +191,31 @@ public class ContractsList extends AbstractDeelConnection implements RunnableTas
                 .rows(mapped)
                 .size(mapped.size())
                 .total(pagination != null ? pagination.getTotalRows() : (long) mapped.size())
+                .nextCursor(nextCursor)
                 .build();
             case FETCH_ONE -> Output.builder()
                 .row(mapped.isEmpty() ? null : mapped.getFirst())
                 .size(mapped.isEmpty() ? 0 : 1)
                 .total(pagination != null ? pagination.getTotalRows() : (long) mapped.size())
+                .nextCursor(nextCursor)
                 .build();
             case STORE -> {
-                // Kestra storage not typically needed for contracts list, use FETCH
-                throw new UnsupportedOperationException("STORE fetch type not supported for ContractsList");
+                File tempFile = runContext.workingDir().createTempFile(".json").toFile();
+                try (java.io.FileWriter writer = new java.io.FileWriter(tempFile)) {
+                    JacksonMapper.ofJson().writeValue(writer, mapped);
+                }
+                URI uri = runContext.storage().putFile(tempFile);
+                yield Output.builder()
+                    .uri(uri)
+                    .size(mapped.size())
+                    .total(pagination != null ? pagination.getTotalRows() : (long) mapped.size())
+                    .nextCursor(nextCursor)
+                    .build();
             }
             case NONE -> Output.builder()
                 .size(0)
                 .total(pagination != null ? pagination.getTotalRows() : 0L)
+                .nextCursor(nextCursor)
                 .build();
         };
     }
@@ -231,5 +251,17 @@ public class ContractsList extends AbstractDeelConnection implements RunnableTas
             description = "Available only when fetchType=FETCH_ONE; contains the first contract."
         )
         private Map<String, Object> row;
+
+        @Schema(
+            title = "Next page cursor",
+            description = "Cursor for the next page of results. Returned when more pages are available."
+        )
+        private String nextCursor;
+
+        @Schema(
+            title = "Stored contracts URI",
+            description = "Kestra internal storage path to the contracts file."
+        )
+        private URI uri;
     }
 }

@@ -5,6 +5,7 @@ import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
+import jakarta.validation.constraints.NotNull;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
@@ -76,6 +77,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
         description = "Worker HRIS profile id identifying the profile whose time-off requests are returned."
     )
     @PluginProperty(group = "filter")
+    @NotNull
     private Property<String> hrisProfileId;
 
     @Schema(
@@ -141,10 +143,13 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
         java.util.List<DeelTimeOff> timeOffs = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
         Long total = page != null && page.getCount() != null ? page.getCount().longValue() : (long) timeOffs.size();
 
+        // Extract next cursor for pagination
+        String nextCursor = page.getNext();
+
         logger.debug("Retrieved {} time-off requests (total: {})", timeOffs.size(), total);
 
         FetchType resolvedFetchType = runContext.render(this.fetchType).as(FetchType.class).orElse(FetchType.FETCH);
-        return handleFetch(runContext, timeOffs, total, resolvedFetchType);
+        return handleFetch(runContext, timeOffs, total, resolvedFetchType, nextCursor);
     }
 
     private Map<String, Object> buildQueryParams(RunContext runContext) throws Exception {
@@ -159,7 +164,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
         return params;
     }
 
-    private Output handleFetch(RunContext runContext, java.util.List<DeelTimeOff> timeOffs, Long total, FetchType fetchType) throws Exception {
+    private Output handleFetch(RunContext runContext, java.util.List<DeelTimeOff> timeOffs, Long total, FetchType fetchType, String nextCursor) throws Exception {
         java.util.List<Map<String, Object>> mapped = timeOffs.stream()
             .map(this::timeOffToMap)
             .toList();
@@ -169,11 +174,15 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
                 .rows(mapped)
                 .size(mapped.size())
                 .total(total)
+                .nextCursor(nextCursor)
+                .next(nextCursor)
                 .build();
             case FETCH_ONE -> Output.builder()
                 .row(mapped.isEmpty() ? null : mapped.getFirst())
                 .size(mapped.isEmpty() ? 0 : 1)
                 .total(total)
+                .nextCursor(nextCursor)
+                .next(nextCursor)
                 .build();
             case STORE -> {
                 File tempFile = runContext.workingDir().createTempFile(".ion").toFile();
@@ -187,11 +196,15 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
                     .uri(uri)
                     .size(mapped.size())
                     .total(total)
+                    .nextCursor(nextCursor)
+                    .next(nextCursor)
                     .build();
             }
             case NONE -> Output.builder()
                 .size(0)
                 .total(total)
+                .nextCursor(nextCursor)
+                .next(nextCursor)
                 .build();
         };
     }
@@ -233,5 +246,17 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
             description = "Available only when fetchType=STORE; Kestra internal storage path to the Ion file."
         )
         private URI uri;
+
+        @Schema(
+            title = "Next page cursor",
+            description = "Cursor for the next page of results. Returned when more pages are available."
+        )
+        private String nextCursor;
+
+        @Schema(
+            title = "Next page token",
+            description = "Token for the next page, as returned by the API."
+        )
+        private String next;
     }
 }

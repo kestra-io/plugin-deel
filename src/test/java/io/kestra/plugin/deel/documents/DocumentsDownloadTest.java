@@ -61,7 +61,6 @@ class DocumentsDownloadTest extends AbstractDeelTest {
         Download.Output output = buildTask().run(runContext);
 
         assertThat(output.getUri(), notNullValue());
-        assertThat(output.getUrl(), is(fileUrl));
         assertThat(output.getContractId(), is(CONTRACT_ID));
         assertThat(output.getDocumentId(), is(DOCUMENT_ID));
         assertThat(output.getSize(), is((long) pdfContent.length));

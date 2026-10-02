@@ -162,8 +162,11 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
 
         logger.debug("Retrieved {} invoices (total: {})", invoices.size(), pagination != null ? pagination.getTotalRows() : "unknown");
 
+        // Extract next cursor for pagination
+        String nextCursor = pagination != null && pagination.getCursor() != null ? pagination.getCursor() : null;
+
         FetchType resolvedFetchType = runContext.render(this.fetchType).as(FetchType.class).orElse(FetchType.FETCH);
-        return handleFetch(runContext, invoices, pagination, resolvedFetchType);
+        return handleFetch(runContext, invoices, pagination, resolvedFetchType, nextCursor);
     }
 
     private Map<String, Object> buildQueryParams(RunContext runContext) throws Exception {
@@ -177,7 +180,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
         return params;
     }
 
-    private Output handleFetch(RunContext runContext, java.util.List<DeelInvoice> invoices, DeelPagination pagination, FetchType fetchType) throws Exception {
+    private Output handleFetch(RunContext runContext, java.util.List<DeelInvoice> invoices, DeelPagination pagination, FetchType fetchType, String nextCursor) throws Exception {
         java.util.List<Map<String, Object>> mapped = invoices.stream()
             .map(this::invoiceToMap)
             .toList();
@@ -187,11 +190,13 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
                 .rows(mapped)
                 .size(mapped.size())
                 .total(pagination != null ? pagination.getTotalRows() : (long) mapped.size())
+                .nextCursor(nextCursor)
                 .build();
             case FETCH_ONE -> Output.builder()
                 .row(mapped.isEmpty() ? null : mapped.getFirst())
                 .size(mapped.isEmpty() ? 0 : 1)
                 .total(pagination != null ? pagination.getTotalRows() : (long) mapped.size())
+                .nextCursor(nextCursor)
                 .build();
             case STORE -> {
                 File tempFile = runContext.workingDir().createTempFile(".ion").toFile();
@@ -205,11 +210,13 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
                     .uri(uri)
                     .size(mapped.size())
                     .total(pagination != null ? pagination.getTotalRows() : (long) mapped.size())
+                    .nextCursor(nextCursor)
                     .build();
             }
             case NONE -> Output.builder()
                 .size(0)
                 .total(pagination != null ? pagination.getTotalRows() : 0L)
+                .nextCursor(nextCursor)
                 .build();
         };
     }
@@ -251,5 +258,11 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
             description = "Available only when fetchType=STORE; Kestra internal storage path to the Ion file."
         )
         private URI uri;
+
+        @Schema(
+            title = "Next page cursor",
+            description = "Cursor for the next page of results. Returned when more pages are available."
+        )
+        private String nextCursor;
     }
 }

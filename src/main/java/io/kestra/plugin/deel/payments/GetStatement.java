@@ -5,6 +5,7 @@ import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
+import jakarta.validation.constraints.NotNull;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.deel.connection.AbstractDeelConnection;
@@ -53,6 +54,7 @@ public class GetStatement extends AbstractDeelConnection implements RunnableTask
         description = "Unique identifier of the payment statement to retrieve."
     )
     @PluginProperty(group = "filter")
+    @NotNull
     private Property<String> paymentStatementId;
 
     private static final TypeReference<DeelPaymentStatementResponse> STATEMENT_TYPE_REF = new TypeReference<>() {};

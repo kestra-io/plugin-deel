@@ -105,17 +105,25 @@ public class Get extends AbstractDeelConnection implements RunnableTask<Get.Outp
 
         LookupType renderedType = runContext.render(this.lookupType).as(LookupType.class).orElseThrow();
 
-        List<Map<String, Object>> rows = switch (renderedType) {
-            case COUNTRIES -> fetchCountries(runContext, logger);
-            case CURRENCIES -> fetchCurrencies(runContext, logger);
-            case JOB_TITLES -> fetchJobTitles(runContext, logger);
-            case SENIORITIES -> fetchSeniorities(runContext, logger);
-        };
+        List<Map<String, Object>> rows = new ArrayList<>();
+        String nextCursor = null;
+
+        switch (renderedType) {
+            case COUNTRIES -> rows = fetchCountries(runContext, logger);
+            case CURRENCIES -> rows = fetchCurrencies(runContext, logger);
+            case JOB_TITLES -> {
+                JobTitlesResult result = fetchJobTitles(runContext, logger);
+                rows = result.rows;
+                nextCursor = result.nextCursor;
+            }
+            case SENIORITIES -> rows = fetchSeniorities(runContext, logger);
+        }
 
         return Output.builder()
             .lookupType(renderedType)
             .rows(rows)
             .size(rows.size())
+            .nextCursor(nextCursor)
             .build();
     }
 
@@ -168,7 +176,17 @@ public class Get extends AbstractDeelConnection implements RunnableTask<Get.Outp
             .toList();
     }
 
-    private List<Map<String, Object>> fetchJobTitles(RunContext runContext, Logger logger) throws Exception {
+    private static class JobTitlesResult {
+        List<Map<String, Object>> rows;
+        String nextCursor;
+
+        JobTitlesResult(List<Map<String, Object>> rows, String nextCursor) {
+            this.rows = rows;
+            this.nextCursor = nextCursor;
+        }
+    }
+
+    private JobTitlesResult fetchJobTitles(RunContext runContext, Logger logger) throws Exception {
         Map<String, Object> params = new HashMap<>();
         runContext.render(this.afterCursor).as(String.class).filter(s -> !s.isBlank()).ifPresent(v -> params.put("after_cursor", v));
 
@@ -183,7 +201,12 @@ public class Get extends AbstractDeelConnection implements RunnableTask<Get.Outp
         List<DeelJobTitle> jobTitles = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
         logger.debug("Retrieved {} job titles", jobTitles.size());
 
-        return jobTitles.stream()
+        String nextCursor = null;
+        if (page.getPage() != null && page.getPage().getCursor() != null) {
+            nextCursor = page.getPage().getCursor();
+        }
+
+        List<Map<String, Object>> rows = jobTitles.stream()
             .map(jobTitle -> {
                 Map<String, Object> map = new HashMap<>();
                 map.put("id", jobTitle.getId());
@@ -191,6 +214,8 @@ public class Get extends AbstractDeelConnection implements RunnableTask<Get.Outp
                 return map;
             })
             .toList();
+
+        return new JobTitlesResult(rows, nextCursor);
     }
 
     private List<Map<String, Object>> fetchSeniorities(RunContext runContext, Logger logger) throws Exception {
@@ -240,5 +265,11 @@ public class Get extends AbstractDeelConnection implements RunnableTask<Get.Outp
             description = "The retrieved reference data."
         )
         private List<Map<String, Object>> rows;
+
+        @Schema(
+            title = "Next page cursor",
+            description = "Cursor for the next page of results. Returned when more pages are available. Only applicable to JOB_TITLES lookup type."
+        )
+        private String nextCursor;
     }
 }

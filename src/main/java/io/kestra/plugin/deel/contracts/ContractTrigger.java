@@ -116,14 +116,36 @@ public class ContractTrigger extends AbstractDeelTrigger implements PollingTrigg
         List<String> signed = runContext.render(this.signedStatuses).asList(String.class);
         List<String> terminated = runContext.render(this.terminatedStatuses).asList(String.class);
 
-        Map<String, Object> params = new HashMap<>();
-        params.put("limit", 100);
-        if (state.getWatermark() != null) {
-            params.put("updated_since", state.getWatermark());
+        List<DeelContract> allContracts = new ArrayList<>();
+        int offset = 0;
+        int limit = 100;
+        boolean hasMore = true;
+
+        while (hasMore) {
+            Map<String, Object> params = new HashMap<>();
+            params.put("limit", limit);
+            params.put("offset", offset);
+            if (state.getWatermark() != null) {
+                params.put("updated_since", state.getWatermark());
+            }
+
+            DeelPage<DeelContract> page = request(runContext, "/contracts", "GET", params, CONTRACTS_PAGE_TYPE_REF);
+            List<DeelContract> pageData = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
+            allContracts.addAll(pageData);
+
+            // Check if there are more pages
+            if (page.getPage() != null && page.getPage().getTotalRows() != null) {
+                int totalRows = page.getPage().getTotalRows().intValue();
+                hasMore = allContracts.size() < totalRows;
+            } else {
+                // If no total_rows, assume one page
+                hasMore = false;
+            }
+
+            offset += limit;
         }
 
-        DeelPage<DeelContract> page = request(runContext, "/contracts", "GET", params, CONTRACTS_PAGE_TYPE_REF);
-        List<DeelContract> contracts = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
+        List<DeelContract> contracts = allContracts;
 
         contracts.sort(Comparator
             .comparing((DeelContract contract) -> contract.getUpdatedAt() != null ? contract.getUpdatedAt() : contract.getCreatedAt(),
@@ -191,23 +213,32 @@ public class ContractTrigger extends AbstractDeelTrigger implements PollingTrigg
             return Optional.empty();
         }
 
-        Map<String, Object> emitted = deduped.remove(0);
-
+        // Emit ALL deduped events in this execution
+        // Clear pending list to prevent KV store growth
         TriggerState next = new TriggerState();
         next.setWatermark(watermark);
         next.setStatuses(statuses);
         next.setSeen(state.getSeen());
-        next.setPending(deduped);
+        next.setPending(new ArrayList<>());
         saveState(runContext, context, next);
 
-        logger.debug("Triggering on contract event {} for {}", emitted.get("event"), emitted.get("id"));
+        logger.debug("Triggering on {} contract events", deduped.size());
 
+        // Use the first event for the execution output
+        Map<String, Object> firstEmitted = deduped.get(0);
+        String firstEvent = (String) firstEmitted.get("event");
+        String firstId = (String) firstEmitted.get("id");
         @SuppressWarnings("unchecked")
-        Map<String, Object> contract = (Map<String, Object>) emitted.get("record");
+        Map<String, Object> firstContract = (Map<String, Object>) firstEmitted.get("record");
+        String firstPreviousStatus = firstEmitted.containsKey("previousStatus")
+            ? (String) firstEmitted.get("previousStatus")
+            : null;
+
         return Optional.of(buildExecution(runContext, context, Output.builder()
-            .event((String) emitted.get("event"))
-            .contract(contract)
-            .previousStatus((String) emitted.get("previousStatus"))
+            .event(firstEvent)
+            .contract(firstContract)
+            .previousStatus(firstPreviousStatus)
+            .events(deduped)
             .build()));
     }
 
@@ -248,8 +279,14 @@ public class ContractTrigger extends AbstractDeelTrigger implements PollingTrigg
         private String event;
 
         @Schema(
+            title = "Events",
+            description = "All detected events in this poll."
+        )
+        private List<Map<String, Object>> events;
+
+        @Schema(
             title = "Contract",
-            description = "The contract that caused the event."
+            description = "The contract that caused the first event."
         )
         private Map<String, Object> contract;
 

@@ -77,8 +77,30 @@ public class InvoiceIssuedTrigger extends AbstractDeelTrigger implements Polling
         params.put("limit", 100);
         params.put("offset", 0);
 
-        DeelPage<DeelInvoice> page = request(runContext, "/invoices", "GET", params, INVOICES_PAGE_TYPE_REF);
-        List<DeelInvoice> invoices = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
+        List<DeelInvoice> allInvoices = new ArrayList<>();
+        boolean hasMore = true;
+        int offset = 0;
+
+        while (hasMore) {
+            params.put("offset", offset);
+
+            DeelPage<DeelInvoice> page = request(runContext, "/invoices", "GET", params, INVOICES_PAGE_TYPE_REF);
+            List<DeelInvoice> pageData = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
+            allInvoices.addAll(pageData);
+
+            // Check if there are more pages
+            if (page.getPage() != null && page.getPage().getTotalRows() != null) {
+                int totalRows = page.getPage().getTotalRows().intValue();
+                hasMore = allInvoices.size() < totalRows;
+            } else {
+                // If no total_rows, assume one page
+                hasMore = false;
+            }
+
+            offset += 100;
+        }
+
+        List<DeelInvoice> invoices = allInvoices;
 
         invoices.sort(Comparator
             .comparing((DeelInvoice invoice) -> eventTime(invoice),
@@ -145,21 +167,27 @@ public class InvoiceIssuedTrigger extends AbstractDeelTrigger implements Polling
             return Optional.empty();
         }
 
-        Map<String, Object> emitted = deduped.remove(0);
-
+        // Emit ALL deduped events in this execution
+        // Clear pending list to prevent KV store growth
         TriggerState next = new TriggerState();
         next.setWatermark(watermark);
         next.setStatuses(state.getStatuses());
         next.setSeen(seen);
-        next.setPending(deduped);
+        next.setPending(new ArrayList<>());
         saveState(runContext, context, next);
 
-        logger.debug("Triggering on invoice {} for {}", emitted.get("event"), emitted.get("id"));
+        logger.debug("Triggering on {} invoice events", deduped.size());
 
+        // Use the first event for the execution output
+        Map<String, Object> firstEmitted = deduped.get(0);
+        String firstEvent = (String) firstEmitted.get("event");
+        String firstId = (String) firstEmitted.get("id");
         @SuppressWarnings("unchecked")
-        Map<String, Object> invoice = (Map<String, Object>) emitted.get("record");
+        Map<String, Object> firstInvoice = (Map<String, Object>) firstEmitted.get("record");
+
         return Optional.of(buildExecution(runContext, context, Output.builder()
-            .invoice(invoice)
+            .invoice(firstInvoice)
+            .events(deduped)
             .build()));
     }
 
@@ -179,5 +207,11 @@ public class InvoiceIssuedTrigger extends AbstractDeelTrigger implements Polling
             description = "The newly issued invoice."
         )
         private Map<String, Object> invoice;
+
+        @Schema(
+            title = "Events",
+            description = "All detected events in this poll."
+        )
+        private List<Map<String, Object>> events;
     }
 }

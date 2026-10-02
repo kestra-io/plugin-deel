@@ -90,15 +90,37 @@ public class PersonTrigger extends AbstractDeelTrigger implements PollingTrigger
 
         List<PersonEvent> enabledEvents = runContext.render(this.events).asList(PersonEvent.class);
 
-        Map<String, Object> params = new HashMap<>();
-        params.put("limit", 100);
-        params.put("offset", 0);
-        if (state.getWatermark() != null) {
-            params.put("updated_since", state.getWatermark());
+        List<DeelPerson> allPeople = new ArrayList<>();
+        int offset = 0;
+        int limit = 100;
+        boolean hasMore = true;
+
+        while (hasMore) {
+            Map<String, Object> params = new HashMap<>();
+            params.put("limit", limit);
+            params.put("offset", offset);
+            if (state.getWatermark() != null) {
+                params.put("updated_since", state.getWatermark());
+            }
+
+            DeelPage<DeelPerson> page = request(runContext, "/v2/people", "GET", params, PEOPLE_PAGE_TYPE_REF);
+            List<DeelPerson> pageData = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
+            allPeople.addAll(pageData);
+
+            // Check if there are more pages
+            // The API returns page with offset and total_rows; we stop when we've retrieved all records
+            if (page.getPage() != null) {
+                int totalRows = page.getPage().getTotalRows() != null ? page.getPage().getTotalRows().intValue() : allPeople.size();
+                hasMore = allPeople.size() < totalRows;
+            } else {
+                // Fallback: stop after one page if no page metadata
+                hasMore = false;
+            }
+
+            offset += limit;
         }
 
-        DeelPage<DeelPerson> page = request(runContext, "/v2/people", "GET", params, PEOPLE_PAGE_TYPE_REF);
-        List<DeelPerson> people = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
+        List<DeelPerson> people = allPeople;
 
         people.sort(Comparator
             .comparing((DeelPerson person) -> person.getUpdatedAt() != null ? person.getUpdatedAt() : person.getCreatedAt(),
@@ -163,23 +185,32 @@ public class PersonTrigger extends AbstractDeelTrigger implements PollingTrigger
             return Optional.empty();
         }
 
-        Map<String, Object> emitted = deduped.remove(0);
-
+        // Emit ALL deduped events in this execution
+        // Clear pending list to prevent KV store growth
         TriggerState next = new TriggerState();
         next.setWatermark(watermark);
         next.setStatuses(statuses);
         next.setSeen(state.getSeen());
-        next.setPending(deduped);
+        next.setPending(new ArrayList<>());
         saveState(runContext, context, next);
 
-        logger.debug("Triggering on person event {} for {}", emitted.get("event"), emitted.get("id"));
+        logger.debug("Triggering on {} person events", deduped.size());
 
+        // Use the first event for the execution output
+        Map<String, Object> firstEmitted = deduped.get(0);
+        String firstEvent = (String) firstEmitted.get("event");
+        String firstId = (String) firstEmitted.get("id");
         @SuppressWarnings("unchecked")
-        Map<String, Object> person = (Map<String, Object>) emitted.get("record");
+        Map<String, Object> firstPerson = (Map<String, Object>) firstEmitted.get("record");
+        String firstPreviousStatus = firstEmitted.containsKey("previousStatus")
+            ? (String) firstEmitted.get("previousStatus")
+            : null;
+
         return Optional.of(buildExecution(runContext, context, Output.builder()
-            .event((String) emitted.get("event"))
-            .person(person)
-            .previousStatus((String) emitted.get("previousStatus"))
+            .event(firstEvent)
+            .person(firstPerson)
+            .previousStatus(firstPreviousStatus)
+            .events(deduped)
             .build()));
     }
 
@@ -220,8 +251,14 @@ public class PersonTrigger extends AbstractDeelTrigger implements PollingTrigger
         private String event;
 
         @Schema(
+            title = "Events",
+            description = "All detected events in this poll."
+        )
+        private List<Map<String, Object>> events;
+
+        @Schema(
             title = "Person",
-            description = "The person that caused the event."
+            description = "The person that caused the first event."
         )
         private Map<String, Object> person;
 

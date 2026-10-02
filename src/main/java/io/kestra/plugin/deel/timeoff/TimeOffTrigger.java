@@ -7,6 +7,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.executions.Execution;
 import io.kestra.core.models.conditions.ConditionContext;
 import io.kestra.core.models.property.Property;
+import jakarta.validation.constraints.NotNull;
 import io.kestra.core.models.triggers.PollingTriggerInterface;
 import io.kestra.core.models.triggers.TriggerContext;
 import io.kestra.core.models.triggers.TriggerOutput;
@@ -77,6 +78,7 @@ public class TimeOffTrigger extends AbstractDeelTrigger implements PollingTrigge
         description = "Worker HRIS profile id identifying the profile whose time-off requests are polled."
     )
     @PluginProperty(group = "main")
+    @NotNull
     private Property<String> hrisProfileId;
 
     @Schema(
@@ -103,17 +105,37 @@ public class TimeOffTrigger extends AbstractDeelTrigger implements PollingTrigge
         String renderedProfileId = runContext.render(this.hrisProfileId).as(String.class).orElseThrow();
         List<TimeOffEvent> enabledEvents = runContext.render(this.events).asList(TimeOffEvent.class);
 
-        Map<String, Object> params = new HashMap<>();
-        params.put("page_size", 100);
+        List<DeelTimeOff> allTimeOffs = new ArrayList<>();
+        int offset = 0;
+        int limit = 100;
+        String cursor = null;
+        boolean hasMore = true;
 
-        DeelTimeOffPage page = request(
-            runContext,
-            "/time_offs/profile/" + renderedProfileId,
-            "GET",
-            params,
-            TIME_OFF_PAGE_TYPE_REF
-        );
-        List<DeelTimeOff> timeOffs = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
+        while (hasMore) {
+            Map<String, Object> params = new HashMap<>();
+            params.put("page_size", limit);
+            if (cursor != null) {
+                params.put("next", cursor);
+            } else {
+                params.put("offset", offset);
+            }
+
+            DeelTimeOffPage page = request(
+                runContext,
+                "/time_offs/profile/" + renderedProfileId,
+                "GET",
+                params,
+                TIME_OFF_PAGE_TYPE_REF
+            );
+            List<DeelTimeOff> pageData = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
+            allTimeOffs.addAll(pageData);
+
+            hasMore = page.getHasNextPage() != null && page.getHasNextPage();
+            cursor = page.getNext();
+            offset += pageData.size();
+        }
+
+        List<DeelTimeOff> timeOffs = allTimeOffs;
 
         timeOffs.sort(Comparator
             .comparing((DeelTimeOff timeOff) -> recordTime(timeOff),
@@ -179,22 +201,31 @@ public class TimeOffTrigger extends AbstractDeelTrigger implements PollingTrigge
             return Optional.empty();
         }
 
-        Map<String, Object> emitted = deduped.remove(0);
+        // Emit ALL deduped events in this execution, not just the first one
+        List<Map<String, Object>> executedEvents = new ArrayList<>(deduped);
 
+        // Keep state without pending events for the next poll
         TriggerState next = new TriggerState();
         next.setWatermark(watermark);
         next.setStatuses(statuses);
         next.setSeen(state.getSeen());
-        next.setPending(deduped);
+        next.setPending(new ArrayList<>());
         saveState(runContext, context, next);
 
-        logger.debug("Triggering on time-off event {} for {}", emitted.get("event"), emitted.get("id"));
+        logger.debug("Triggering on {} time-off events", executedEvents.size());
 
+        // Build execution with all events - we'll use the first event's record for the execution
+        // but all events are tracked in the state
+        Map<String, Object> firstEmitted = deduped.get(0);
         @SuppressWarnings("unchecked")
-        Map<String, Object> timeOff = (Map<String, Object>) emitted.get("record");
+        Map<String, Object> firstTimeOff = (Map<String, Object>) firstEmitted.get("record");
+        String firstEvent = (String) firstEmitted.get("event");
+        String firstId = (String) firstEmitted.get("id");
+
         return Optional.of(buildExecution(runContext, context, Output.builder()
-            .event((String) emitted.get("event"))
-            .timeOff(timeOff)
+            .event(firstEvent)
+            .timeOff(firstTimeOff)
+            .events(deduped)
             .build()));
     }
 
@@ -255,8 +286,14 @@ public class TimeOffTrigger extends AbstractDeelTrigger implements PollingTrigge
         private String event;
 
         @Schema(
+            title = "Events",
+            description = "All detected events in this poll."
+        )
+        private List<Map<String, Object>> events;
+
+        @Schema(
             title = "Time off record",
-            description = "The time-off record that caused the event."
+            description = "The time-off record that caused the first event."
         )
         private Map<String, Object> timeOff;
     }
