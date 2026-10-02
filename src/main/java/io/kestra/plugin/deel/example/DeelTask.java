@@ -1,4 +1,4 @@
-package io.kestra.plugin.deel;
+package io.kestra.plugin.deel.example;
 
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
@@ -31,7 +31,7 @@ import org.slf4j.Logger;
 
                 tasks:
                   - id: reverse
-                    type: io.kestra.plugin.deel.DeelTask
+                    type: io.kestra.plugin.deel.example.DeelTask
                     format: "Text to be reverted"
                 """
         )
