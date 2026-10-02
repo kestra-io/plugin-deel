@@ -87,7 +87,11 @@ dependencies {
     testImplementation "org.junit.jupiter:junit-jupiter-engine"
     testImplementation "org.hamcrest:hamcrest"
     testImplementation "org.hamcrest:hamcrest-library"
+
+    // test-only: compiling test doubles of core services (e.g., WebhookService) needs its supertypes
+    testImplementation "io.opentelemetry:opentelemetry-api"
 }
+
 
 /**********************************************************************************************************************\
  * Allure Reports
