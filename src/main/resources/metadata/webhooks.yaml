@@ -1,0 +1,5 @@
+group: io.kestra.plugin.deel.webhooks
+name: "webhooks"
+title: "Deel Webhooks"
+description: "Deel webhook triggers"
+body: ""
