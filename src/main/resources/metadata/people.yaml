@@ -1,0 +1,5 @@
+group: io.kestra.plugin.deel.people
+name: "people"
+title: "Deel People"
+description: "Deel people tasks and triggers"
+body: ""

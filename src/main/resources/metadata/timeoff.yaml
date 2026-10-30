@@ -1,0 +1,5 @@
+group: io.kestra.plugin.deel.timeoff
+name: "timeoff"
+title: "Deel Time Off"
+description: "Deel time-off tasks and triggers"
+body: ""
