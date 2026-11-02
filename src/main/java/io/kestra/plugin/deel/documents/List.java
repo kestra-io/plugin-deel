@@ -10,8 +10,8 @@ import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.plugin.deel.connection.AbstractDeelConnection;
-import io.kestra.plugin.deel.model.DeelHrxDocument;
-import io.kestra.plugin.deel.model.DeelHrxDocumentPage;
+import io.kestra.plugin.deel.model.HrxDocument;
+import io.kestra.plugin.deel.model.HrxDocumentPage;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -84,7 +84,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
     @Builder.Default
     private Property<FetchType> fetchType = Property.ofValue(FetchType.FETCH);
 
-    private static final TypeReference<DeelHrxDocumentPage> DOCUMENTS_PAGE_TYPE_REF = new TypeReference<>() {};
+    private static final TypeReference<HrxDocumentPage> DOCUMENTS_PAGE_TYPE_REF = new TypeReference<>() {};
 
     @Override
     public Output run(RunContext runContext) throws Exception {
@@ -93,7 +93,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
         String rContractId = runContext.render(this.contractId).as(String.class).orElseThrow(() -> new IllegalArgumentException("contractId is required"));
         Map<String, Object> params = buildQueryParams(runContext);
 
-        DeelHrxDocumentPage page = request(
+        HrxDocumentPage page = request(
             runContext,
             "/eor/contracts/" + rContractId + "/hrx-documents",
             "GET",
@@ -101,7 +101,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
             DOCUMENTS_PAGE_TYPE_REF
         );
 
-        java.util.List<DeelHrxDocument> documents = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
+        java.util.List<HrxDocument> documents = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
         long total = page != null && page.getTotalCount() != null ? page.getTotalCount().longValue() : documents.size();
 
         logger.debug("Retrieved {} documents for contract {} (total: {})", documents.size(), rContractId, total);
@@ -119,7 +119,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
         return params;
     }
 
-    private Output handleFetch(RunContext runContext, java.util.List<DeelHrxDocument> documents, long total, FetchType fetchType) throws Exception {
+    private Output handleFetch(RunContext runContext, java.util.List<HrxDocument> documents, long total, FetchType fetchType) throws Exception {
         java.util.List<Map<String, Object>> mapped = documents.stream()
             .map(this::documentToMap)
             .toList();
@@ -156,7 +156,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
         };
     }
 
-    private Map<String, Object> documentToMap(DeelHrxDocument document) {
+    private Map<String, Object> documentToMap(HrxDocument document) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", document.getId());
         map.put("name", document.getName());

@@ -8,9 +8,9 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.deel.connection.AbstractDeelConnection;
-import io.kestra.plugin.deel.model.DeelPage;
-import io.kestra.plugin.deel.model.DeelContract;
-import io.kestra.plugin.deel.model.DeelPagination;
+import io.kestra.plugin.deel.model.Page;
+import io.kestra.plugin.deel.model.Contract;
+import io.kestra.plugin.deel.model.Pagination;
 import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.serializers.FileSerde;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -129,8 +129,8 @@ public class ContractsList extends AbstractDeelConnection implements RunnableTas
     @Builder.Default
     private Property<FetchType> fetchType = Property.ofValue(FetchType.FETCH);
 
-    // TypeReference for DeelPage<DeelContract> to preserve generic type information
-    private static final TypeReference<DeelPage<DeelContract>> CONTRACTS_PAGE_TYPE_REF = new TypeReference<>() {};
+    // TypeReference for Page<Contract> to preserve generic type information
+    private static final TypeReference<Page<Contract>> CONTRACTS_PAGE_TYPE_REF = new TypeReference<>() {};
 
     @Override
     public Output run(RunContext runContext) throws Exception {
@@ -146,7 +146,7 @@ public class ContractsList extends AbstractDeelConnection implements RunnableTas
         }
         params.put("limit", Math.min(rLimit, 100));
 
-        DeelPage<DeelContract> page = request(
+        Page<Contract> page = request(
             runContext,
             "/contracts",
             "GET",
@@ -154,8 +154,8 @@ public class ContractsList extends AbstractDeelConnection implements RunnableTas
             CONTRACTS_PAGE_TYPE_REF
         );
 
-        List<DeelContract> contracts = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
-        DeelPagination pagination = page != null ? page.getPage() : null;
+        List<Contract> contracts = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
+        Pagination pagination = page != null ? page.getPage() : null;
 
         logger.debug("Retrieved {} contracts (total: {})", contracts.size(), pagination != null ? pagination.getTotalRows() : "unknown");
 
@@ -178,7 +178,7 @@ public class ContractsList extends AbstractDeelConnection implements RunnableTas
         return params;
     }
 
-    private Output handleFetch(RunContext runContext, List<DeelContract> contracts, DeelPagination pagination, FetchType fetchType, String nextCursor) throws Exception {
+    private Output handleFetch(RunContext runContext, List<Contract> contracts, Pagination pagination, FetchType fetchType, String nextCursor) throws Exception {
         List<Map<String, Object>> mapped = contracts.stream()
             .map(this::contractToMap)
             .toList();
@@ -219,8 +219,8 @@ public class ContractsList extends AbstractDeelConnection implements RunnableTas
         };
     }
 
-    private Map<String, Object> contractToMap(DeelContract contract) {
-        return DeelContract.toMap(contract);
+    private Map<String, Object> contractToMap(Contract contract) {
+        return Contract.toMap(contract);
     }
 
     @Builder

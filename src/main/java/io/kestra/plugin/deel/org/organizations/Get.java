@@ -6,8 +6,8 @@ import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.plugin.deel.connection.AbstractDeelConnection;
-import io.kestra.plugin.deel.model.DeelListResponse;
-import io.kestra.plugin.deel.model.DeelOrganization;
+import io.kestra.plugin.deel.model.ListResponse;
+import io.kestra.plugin.deel.model.Organization;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -44,13 +44,13 @@ import java.util.Map;
 )
 public class Get extends AbstractDeelConnection implements RunnableTask<Get.Output> {
 
-    private static final TypeReference<DeelListResponse<DeelOrganization>> ORGANIZATIONS_TYPE_REF = new TypeReference<>() {};
+    private static final TypeReference<ListResponse<Organization>> ORGANIZATIONS_TYPE_REF = new TypeReference<>() {};
 
     @Override
     public Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
-        DeelListResponse<DeelOrganization> response = request(
+        ListResponse<Organization> response = request(
             runContext,
             "/organizations",
             "GET",
@@ -58,7 +58,7 @@ public class Get extends AbstractDeelConnection implements RunnableTask<Get.Outp
             ORGANIZATIONS_TYPE_REF
         );
 
-        List<DeelOrganization> organizations = response != null && response.getData() != null
+        List<Organization> organizations = response != null && response.getData() != null
             ? response.getData()
             : List.of();
 
@@ -66,7 +66,7 @@ public class Get extends AbstractDeelConnection implements RunnableTask<Get.Outp
             throw new IllegalStateException("Organization not found for the current token");
         }
 
-        DeelOrganization organization = organizations.getFirst();
+        Organization organization = organizations.getFirst();
         logger.debug("Retrieved organization: {}", organization.getName());
 
         Map<String, Object> map = new HashMap<>();

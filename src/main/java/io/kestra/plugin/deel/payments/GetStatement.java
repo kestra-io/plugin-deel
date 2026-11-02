@@ -9,8 +9,8 @@ import jakarta.validation.constraints.NotNull;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.deel.connection.AbstractDeelConnection;
-import io.kestra.plugin.deel.model.DeelPaymentStatement;
-import io.kestra.plugin.deel.model.DeelPaymentStatementResponse;
+import io.kestra.plugin.deel.model.PaymentStatement;
+import io.kestra.plugin.deel.model.PaymentStatementResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -57,7 +57,7 @@ public class GetStatement extends AbstractDeelConnection implements RunnableTask
     @NotNull
     private Property<String> paymentStatementId;
 
-    private static final TypeReference<DeelPaymentStatementResponse> STATEMENT_TYPE_REF = new TypeReference<>() {};
+    private static final TypeReference<PaymentStatementResponse> STATEMENT_TYPE_REF = new TypeReference<>() {};
 
     @Override
     public Output run(RunContext runContext) throws Exception {
@@ -65,7 +65,7 @@ public class GetStatement extends AbstractDeelConnection implements RunnableTask
 
         String rId = runContext.render(this.paymentStatementId).as(String.class).orElseThrow(() -> new IllegalArgumentException("paymentStatementId is required"));
 
-        DeelPaymentStatementResponse response = request(
+        PaymentStatementResponse response = request(
             runContext,
             "/payments/statements/" + rId,
             "GET",
@@ -77,7 +77,7 @@ public class GetStatement extends AbstractDeelConnection implements RunnableTask
             throw new IllegalStateException("Payment statement not found: " + rId);
         }
 
-        DeelPaymentStatement statement = response.getData();
+        PaymentStatement statement = response.getData();
         logger.debug("Retrieved payment statement: {} ({})", statement.getId(), statement.getStatus());
 
         return Output.builder()
@@ -85,7 +85,7 @@ public class GetStatement extends AbstractDeelConnection implements RunnableTask
             .build();
     }
 
-    private Map<String, Object> statementToMap(DeelPaymentStatement statement) {
+    private Map<String, Object> statementToMap(PaymentStatement statement) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", statement.getId());
         map.put("amount", statement.getAmount());

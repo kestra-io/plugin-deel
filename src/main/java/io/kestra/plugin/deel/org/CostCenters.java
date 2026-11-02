@@ -10,8 +10,8 @@ import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.plugin.deel.connection.AbstractDeelConnection;
-import io.kestra.plugin.deel.model.DeelCostCenter;
-import io.kestra.plugin.deel.model.DeelListResponse;
+import io.kestra.plugin.deel.model.CostCenter;
+import io.kestra.plugin.deel.model.ListResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -69,7 +69,7 @@ public class CostCenters extends AbstractDeelConnection implements RunnableTask<
     @Builder.Default
     private Property<FetchType> fetchType = Property.ofValue(FetchType.FETCH);
 
-    private static final TypeReference<DeelListResponse<DeelCostCenter>> COST_CENTERS_TYPE_REF = new TypeReference<>() {};
+    private static final TypeReference<ListResponse<CostCenter>> COST_CENTERS_TYPE_REF = new TypeReference<>() {};
 
     @Override
     public Output run(RunContext runContext) throws Exception {
@@ -77,7 +77,7 @@ public class CostCenters extends AbstractDeelConnection implements RunnableTask<
 
         String rLegalEntityId = runContext.render(this.legalEntityId).as(String.class).orElseThrow(() -> new IllegalArgumentException("legalEntityId is required"));
 
-        DeelListResponse<DeelCostCenter> response = request(
+        ListResponse<CostCenter> response = request(
             runContext,
             "/legal-entities/" + rLegalEntityId + "/cost-centers",
             "GET",
@@ -85,7 +85,7 @@ public class CostCenters extends AbstractDeelConnection implements RunnableTask<
             COST_CENTERS_TYPE_REF
         );
 
-        List<DeelCostCenter> costCenters = response != null && response.getData() != null
+        List<CostCenter> costCenters = response != null && response.getData() != null
             ? response.getData()
             : List.of();
 
@@ -95,7 +95,7 @@ public class CostCenters extends AbstractDeelConnection implements RunnableTask<
         return handleFetch(runContext, costCenters, resolvedFetchType);
     }
 
-    private Output handleFetch(RunContext runContext, List<DeelCostCenter> costCenters, FetchType fetchType) throws Exception {
+    private Output handleFetch(RunContext runContext, List<CostCenter> costCenters, FetchType fetchType) throws Exception {
         List<Map<String, Object>> mapped = costCenters.stream()
             .map(costCenter -> {
                 Map<String, Object> map = new HashMap<>();

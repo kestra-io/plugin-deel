@@ -10,9 +10,9 @@ import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.plugin.deel.connection.AbstractDeelConnection;
-import io.kestra.plugin.deel.model.DeelManager;
-import io.kestra.plugin.deel.model.DeelPage;
-import io.kestra.plugin.deel.model.DeelPagination;
+import io.kestra.plugin.deel.model.Manager;
+import io.kestra.plugin.deel.model.Page;
+import io.kestra.plugin.deel.model.Pagination;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -80,7 +80,7 @@ public class Managers extends AbstractDeelConnection implements RunnableTask<Man
     @Builder.Default
     private Property<FetchType> fetchType = Property.ofValue(FetchType.FETCH);
 
-    private static final TypeReference<DeelPage<DeelManager>> MANAGERS_PAGE_TYPE_REF = new TypeReference<>() {};
+    private static final TypeReference<Page<Manager>> MANAGERS_PAGE_TYPE_REF = new TypeReference<>() {};
 
     @Override
     public Output run(RunContext runContext) throws Exception {
@@ -93,7 +93,7 @@ public class Managers extends AbstractDeelConnection implements RunnableTask<Man
         params.put("limit", rLimit);
         params.put("offset", rOffset);
 
-        DeelPage<DeelManager> page = request(
+        Page<Manager> page = request(
             runContext,
             "/managers",
             "GET",
@@ -101,8 +101,8 @@ public class Managers extends AbstractDeelConnection implements RunnableTask<Man
             MANAGERS_PAGE_TYPE_REF
         );
 
-        List<DeelManager> managers = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
-        DeelPagination pagination = page != null ? page.getPage() : null;
+        List<Manager> managers = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
+        Pagination pagination = page != null ? page.getPage() : null;
 
         logger.debug("Retrieved {} managers (total: {})", managers.size(), pagination != null ? pagination.getTotalRows() : "unknown");
 
@@ -110,7 +110,7 @@ public class Managers extends AbstractDeelConnection implements RunnableTask<Man
         return handleFetch(runContext, managers, pagination, resolvedFetchType);
     }
 
-    private Output handleFetch(RunContext runContext, List<DeelManager> managers, DeelPagination pagination, FetchType fetchType) throws Exception {
+    private Output handleFetch(RunContext runContext, List<Manager> managers, Pagination pagination, FetchType fetchType) throws Exception {
         List<Map<String, Object>> mapped = managers.stream()
             .map(manager -> {
                 Map<String, Object> map = new HashMap<>();

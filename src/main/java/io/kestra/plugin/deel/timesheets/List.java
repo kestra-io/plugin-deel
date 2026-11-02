@@ -10,9 +10,9 @@ import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.plugin.deel.connection.AbstractDeelConnection;
-import io.kestra.plugin.deel.model.DeelPage;
-import io.kestra.plugin.deel.model.DeelPagination;
-import io.kestra.plugin.deel.model.DeelTimesheet;
+import io.kestra.plugin.deel.model.Page;
+import io.kestra.plugin.deel.model.Pagination;
+import io.kestra.plugin.deel.model.Timesheet;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -124,7 +124,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
     @Builder.Default
     private Property<FetchType> fetchType = Property.ofValue(FetchType.FETCH);
 
-    private static final TypeReference<DeelPage<DeelTimesheet>> TIMESHEETS_PAGE_TYPE_REF = new TypeReference<>() {};
+    private static final TypeReference<Page<Timesheet>> TIMESHEETS_PAGE_TYPE_REF = new TypeReference<>() {};
 
     @Override
     public Output run(RunContext runContext) throws Exception {
@@ -138,7 +138,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
         params.put("limit", rLimit);
         params.put("offset", rOffset);
 
-        DeelPage<DeelTimesheet> page = request(
+        Page<Timesheet> page = request(
             runContext,
             "/timesheets",
             "GET",
@@ -146,8 +146,8 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
             TIMESHEETS_PAGE_TYPE_REF
         );
 
-        java.util.List<DeelTimesheet> timesheets = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
-        DeelPagination pagination = page != null ? page.getPage() : null;
+        java.util.List<Timesheet> timesheets = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
+        Pagination pagination = page != null ? page.getPage() : null;
 
         logger.debug("Retrieved {} timesheets (total: {})", timesheets.size(), pagination != null ? pagination.getTotalRows() : "unknown");
 
@@ -166,7 +166,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
         return params;
     }
 
-    private Output handleFetch(RunContext runContext, java.util.List<DeelTimesheet> timesheets, DeelPagination pagination, FetchType fetchType) throws Exception {
+    private Output handleFetch(RunContext runContext, java.util.List<Timesheet> timesheets, Pagination pagination, FetchType fetchType) throws Exception {
         java.util.List<Map<String, Object>> mapped = timesheets.stream()
             .map(this::timesheetToMap)
             .toList();
@@ -203,7 +203,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
         };
     }
 
-    private Map<String, Object> timesheetToMap(DeelTimesheet timesheet) {
+    private Map<String, Object> timesheetToMap(Timesheet timesheet) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", timesheet.getId());
         map.put("type", timesheet.getType());

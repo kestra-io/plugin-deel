@@ -9,7 +9,7 @@ import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.deel.connection.AbstractDeelConnection;
-import io.kestra.plugin.deel.model.DeelPerson;
+import io.kestra.plugin.deel.model.Person;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -53,8 +53,8 @@ public class PeopleGet extends AbstractDeelConnection implements RunnableTask<Pe
     @PluginProperty(group = "main")
     private Property<String> personId;
 
-    // TypeReference for DeelPerson to preserve generic type information
-    private static final TypeReference<DeelPerson> PERSON_TYPE_REF = new TypeReference<>() {};
+    // TypeReference for Person to preserve generic type information
+    private static final TypeReference<Person> PERSON_TYPE_REF = new TypeReference<>() {};
 
     @Override
     public Output run(RunContext runContext) throws Exception {
@@ -62,7 +62,7 @@ public class PeopleGet extends AbstractDeelConnection implements RunnableTask<Pe
 
         String rPersonId = runContext.render(this.personId).as(String.class).orElseThrow(() -> new IllegalArgumentException("personId is required"));
 
-        DeelPerson person = request(
+        Person person = request(
             runContext,
             "/v2/people/" + rPersonId,
             "GET",
@@ -81,7 +81,7 @@ public class PeopleGet extends AbstractDeelConnection implements RunnableTask<Pe
             .build();
     }
 
-    private Map<String, Object> personToMap(DeelPerson person) {
+    private Map<String, Object> personToMap(Person person) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", person.getId());
         map.put("first_name", person.getFirstName());

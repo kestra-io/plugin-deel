@@ -12,8 +12,8 @@ import io.kestra.core.models.triggers.TriggerContext;
 import io.kestra.core.models.triggers.TriggerOutput;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.deel.triggers.AbstractDeelTrigger;
-import io.kestra.plugin.deel.model.DeelContract;
-import io.kestra.plugin.deel.model.DeelPage;
+import io.kestra.plugin.deel.model.Contract;
+import io.kestra.plugin.deel.model.Page;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -101,7 +101,7 @@ public class ContractTrigger extends AbstractDeelTrigger implements PollingTrigg
         List.of("terminated", "cancelled", "user_cancelled")
     );
 
-    private static final TypeReference<DeelPage<DeelContract>> CONTRACTS_PAGE_TYPE_REF = new TypeReference<>() {};
+    private static final TypeReference<Page<Contract>> CONTRACTS_PAGE_TYPE_REF = new TypeReference<>() {};
 
     @Override
     public Optional<Execution> evaluate(ConditionContext conditionContext, TriggerContext context) throws Exception {
@@ -116,7 +116,7 @@ public class ContractTrigger extends AbstractDeelTrigger implements PollingTrigg
         List<String> signed = runContext.render(this.signedStatuses).asList(String.class);
         List<String> terminated = runContext.render(this.terminatedStatuses).asList(String.class);
 
-        List<DeelContract> allContracts = new ArrayList<>();
+        List<Contract> allContracts = new ArrayList<>();
         int limit = 100;
         String afterCursor = null;
         boolean hasMore = true;
@@ -131,7 +131,7 @@ public class ContractTrigger extends AbstractDeelTrigger implements PollingTrigg
                 params.put("after_cursor", afterCursor);
             }
 
-            DeelPage<DeelContract> page = request(runContext, "/contracts", "GET", params, CONTRACTS_PAGE_TYPE_REF);
+            Page<Contract> page = request(runContext, "/contracts", "GET", params, CONTRACTS_PAGE_TYPE_REF);
             if (page == null || page.getData() == null || page.getData().isEmpty()) {
                 break;
             }
@@ -145,18 +145,18 @@ public class ContractTrigger extends AbstractDeelTrigger implements PollingTrigg
             }
         }
 
-        List<DeelContract> contracts = allContracts;
+        List<Contract> contracts = allContracts;
 
         contracts.sort(Comparator
-            .comparing((DeelContract contract) -> contract.getUpdatedAt() != null ? contract.getUpdatedAt() : contract.getCreatedAt(),
+            .comparing((Contract contract) -> contract.getUpdatedAt() != null ? contract.getUpdatedAt() : contract.getCreatedAt(),
                 Comparator.nullsFirst(AbstractDeelTrigger::compareTimestamps))
-            .thenComparing(DeelContract::getId, Comparator.nullsFirst(String::compareTo)));
+            .thenComparing(Contract::getId, Comparator.nullsFirst(String::compareTo)));
 
         Map<String, String> statuses = new HashMap<>(state.getStatuses());
         String watermark = state.getWatermark();
         List<Map<String, Object>> pending = new ArrayList<>(state.getPending());
 
-        for (DeelContract contract : contracts) {
+        for (Contract contract : contracts) {
             String id = contract.getId();
             if (id == null) {
                 continue;
@@ -174,7 +174,7 @@ public class ContractTrigger extends AbstractDeelTrigger implements PollingTrigg
             if (!statuses.containsKey(id)) {
                 statuses.put(id, contract.getStatus());
                 if (enabledEvents.contains(ContractEvent.created) && isNewRecord(contract.getCreatedAt(), state.getWatermark())) {
-                    pending.add(pendingEvent(ContractEvent.created.name(), id, null, DeelContract.toMap(contract)));
+                    pending.add(pendingEvent(ContractEvent.created.name(), id, null, Contract.toMap(contract)));
                 }
             } else {
                 String previous = statuses.get(id);
@@ -182,9 +182,9 @@ public class ContractTrigger extends AbstractDeelTrigger implements PollingTrigg
                 statuses.put(id, current);
                 if (!equalsNullable(previous, current)) {
                     if (current != null && signed.contains(current) && enabledEvents.contains(ContractEvent.signed)) {
-                        pending.add(pendingEvent(ContractEvent.signed.name(), id, previous, DeelContract.toMap(contract)));
+                        pending.add(pendingEvent(ContractEvent.signed.name(), id, previous, Contract.toMap(contract)));
                     } else if (current != null && terminated.contains(current) && enabledEvents.contains(ContractEvent.terminated)) {
-                        pending.add(pendingEvent(ContractEvent.terminated.name(), id, previous, DeelContract.toMap(contract)));
+                        pending.add(pendingEvent(ContractEvent.terminated.name(), id, previous, Contract.toMap(contract)));
                     }
                 }
             }

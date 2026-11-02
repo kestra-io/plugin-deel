@@ -9,7 +9,7 @@ import jakarta.validation.constraints.NotNull;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.deel.connection.AbstractDeelConnection;
-import io.kestra.plugin.deel.model.DeelHrxDownloadResponse;
+import io.kestra.plugin.deel.model.HrxDownloadResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -72,7 +72,7 @@ public class Download extends AbstractDeelConnection implements RunnableTask<Dow
     @NotNull
     private Property<String> documentId;
 
-    private static final TypeReference<DeelHrxDownloadResponse> DOWNLOAD_TYPE_REF = new TypeReference<>() {};
+    private static final TypeReference<HrxDownloadResponse> DOWNLOAD_TYPE_REF = new TypeReference<>() {};
 
     @Override
     public Output run(RunContext runContext) throws Exception {
@@ -81,7 +81,7 @@ public class Download extends AbstractDeelConnection implements RunnableTask<Dow
         String rContractId = runContext.render(this.contractId).as(String.class).orElseThrow(() -> new IllegalArgumentException("contractId is required"));
         String rDocumentId = runContext.render(this.documentId).as(String.class).orElseThrow(() -> new IllegalArgumentException("documentId is required"));
 
-        DeelHrxDownloadResponse response = request(
+        HrxDownloadResponse response = request(
             runContext,
             "/eor/contracts/" + rContractId + "/hrx-documents/" + rDocumentId,
             "GET",

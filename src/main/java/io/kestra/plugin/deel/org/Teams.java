@@ -10,8 +10,8 @@ import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.plugin.deel.connection.AbstractDeelConnection;
-import io.kestra.plugin.deel.model.DeelListResponse;
-import io.kestra.plugin.deel.model.DeelTeam;
+import io.kestra.plugin.deel.model.ListResponse;
+import io.kestra.plugin.deel.model.Team;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -61,13 +61,13 @@ public class Teams extends AbstractDeelConnection implements RunnableTask<Teams.
     @Builder.Default
     private Property<FetchType> fetchType = Property.ofValue(FetchType.FETCH);
 
-    private static final TypeReference<DeelListResponse<DeelTeam>> TEAMS_TYPE_REF = new TypeReference<>() {};
+    private static final TypeReference<ListResponse<Team>> TEAMS_TYPE_REF = new TypeReference<>() {};
 
     @Override
     public Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
-        DeelListResponse<DeelTeam> response = request(
+        ListResponse<Team> response = request(
             runContext,
             "/teams",
             "GET",
@@ -75,7 +75,7 @@ public class Teams extends AbstractDeelConnection implements RunnableTask<Teams.
             TEAMS_TYPE_REF
         );
 
-        List<DeelTeam> teams = response != null && response.getData() != null
+        List<Team> teams = response != null && response.getData() != null
             ? response.getData()
             : List.of();
 
@@ -85,7 +85,7 @@ public class Teams extends AbstractDeelConnection implements RunnableTask<Teams.
         return handleFetch(runContext, teams, resolvedFetchType);
     }
 
-    private Output handleFetch(RunContext runContext, List<DeelTeam> teams, FetchType fetchType) throws Exception {
+    private Output handleFetch(RunContext runContext, List<Team> teams, FetchType fetchType) throws Exception {
         List<Map<String, Object>> mapped = teams.stream()
             .map(team -> {
                 Map<String, Object> map = new HashMap<>();

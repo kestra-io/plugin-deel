@@ -10,9 +10,9 @@ import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.plugin.deel.connection.AbstractDeelConnection;
-import io.kestra.plugin.deel.model.DeelLegalEntity;
-import io.kestra.plugin.deel.model.DeelPage;
-import io.kestra.plugin.deel.model.DeelPagination;
+import io.kestra.plugin.deel.model.LegalEntity;
+import io.kestra.plugin.deel.model.Page;
+import io.kestra.plugin.deel.model.Pagination;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -128,7 +128,7 @@ public class LegalEntities extends AbstractDeelConnection implements RunnableTas
     @Builder.Default
     private Property<FetchType> fetchType = Property.ofValue(FetchType.FETCH);
 
-    private static final TypeReference<DeelPage<DeelLegalEntity>> LEGAL_ENTITIES_PAGE_TYPE_REF = new TypeReference<>() {};
+    private static final TypeReference<Page<LegalEntity>> LEGAL_ENTITIES_PAGE_TYPE_REF = new TypeReference<>() {};
 
     @Override
     public Output run(RunContext runContext) throws Exception {
@@ -139,7 +139,7 @@ public class LegalEntities extends AbstractDeelConnection implements RunnableTas
         int rLimit = runContext.render(this.limit).as(Integer.class).orElse(100);
         params.put("limit", rLimit);
 
-        DeelPage<DeelLegalEntity> page = request(
+        Page<LegalEntity> page = request(
             runContext,
             "/legal-entities",
             "GET",
@@ -147,8 +147,8 @@ public class LegalEntities extends AbstractDeelConnection implements RunnableTas
             LEGAL_ENTITIES_PAGE_TYPE_REF
         );
 
-        List<DeelLegalEntity> entities = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
-        DeelPagination pagination = page != null ? page.getPage() : null;
+        List<LegalEntity> entities = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
+        Pagination pagination = page != null ? page.getPage() : null;
 
         logger.debug("Retrieved {} legal entities", entities.size());
 
@@ -169,7 +169,7 @@ public class LegalEntities extends AbstractDeelConnection implements RunnableTas
         return params;
     }
 
-    private Output handleFetch(RunContext runContext, List<DeelLegalEntity> entities, DeelPagination pagination, FetchType fetchType) throws Exception {
+    private Output handleFetch(RunContext runContext, List<LegalEntity> entities, Pagination pagination, FetchType fetchType) throws Exception {
         List<Map<String, Object>> mapped = entities.stream()
             .map(this::entityToMap)
             .toList();
@@ -210,7 +210,7 @@ public class LegalEntities extends AbstractDeelConnection implements RunnableTas
         };
     }
 
-    private Map<String, Object> entityToMap(DeelLegalEntity entity) {
+    private Map<String, Object> entityToMap(LegalEntity entity) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", entity.getId());
         map.put("name", entity.getName());

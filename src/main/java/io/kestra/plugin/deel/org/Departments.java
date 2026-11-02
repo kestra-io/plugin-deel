@@ -10,8 +10,8 @@ import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.plugin.deel.connection.AbstractDeelConnection;
-import io.kestra.plugin.deel.model.DeelDepartment;
-import io.kestra.plugin.deel.model.DeelListResponse;
+import io.kestra.plugin.deel.model.Department;
+import io.kestra.plugin.deel.model.ListResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -61,13 +61,13 @@ public class Departments extends AbstractDeelConnection implements RunnableTask<
     @Builder.Default
     private Property<FetchType> fetchType = Property.ofValue(FetchType.FETCH);
 
-    private static final TypeReference<DeelListResponse<DeelDepartment>> DEPARTMENTS_TYPE_REF = new TypeReference<>() {};
+    private static final TypeReference<ListResponse<Department>> DEPARTMENTS_TYPE_REF = new TypeReference<>() {};
 
     @Override
     public Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
-        DeelListResponse<DeelDepartment> response = request(
+        ListResponse<Department> response = request(
             runContext,
             "/departments",
             "GET",
@@ -75,7 +75,7 @@ public class Departments extends AbstractDeelConnection implements RunnableTask<
             DEPARTMENTS_TYPE_REF
         );
 
-        List<DeelDepartment> departments = response != null && response.getData() != null
+        List<Department> departments = response != null && response.getData() != null
             ? response.getData()
             : List.of();
 
@@ -85,7 +85,7 @@ public class Departments extends AbstractDeelConnection implements RunnableTask<
         return handleFetch(runContext, departments, resolvedFetchType);
     }
 
-    private Output handleFetch(RunContext runContext, List<DeelDepartment> departments, FetchType fetchType) throws Exception {
+    private Output handleFetch(RunContext runContext, List<Department> departments, FetchType fetchType) throws Exception {
         List<Map<String, Object>> mapped = departments.stream()
             .map(department -> {
                 Map<String, Object> map = new HashMap<>();

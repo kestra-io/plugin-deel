@@ -6,9 +6,9 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.plugin.deel.AbstractDeelTest;
 import io.kestra.plugin.deel.MockDeelController;
-import io.kestra.plugin.deel.model.DeelPage;
-import io.kestra.plugin.deel.model.DeelPerson;
-import io.kestra.plugin.deel.model.DeelPagination;
+import io.kestra.plugin.deel.model.Page;
+import io.kestra.plugin.deel.model.Person;
+import io.kestra.plugin.deel.model.Pagination;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -96,7 +96,7 @@ class PeopleListTest extends AbstractDeelTest {
         assertThat(output.getRows(), notNullValue());
         assertThat(output.getRows().size(), is(2));
 
-        // Verify the data structure - rows should contain proper DeelPerson fields
+        // Verify the data structure - rows should contain proper Person fields
         Map<String, Object> firstPerson = output.getRows().get(0);
         assertThat(firstPerson.get("id"), is("550e8400-e29b-41d4-a716-446655440000"));
         assertThat(firstPerson.get("first_name"), is("John"));

@@ -10,8 +10,8 @@ import io.kestra.core.models.triggers.TriggerContext;
 import io.kestra.core.models.triggers.TriggerOutput;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.deel.triggers.AbstractDeelTrigger;
-import io.kestra.plugin.deel.model.DeelInvoice;
-import io.kestra.plugin.deel.model.DeelPage;
+import io.kestra.plugin.deel.model.Invoice;
+import io.kestra.plugin.deel.model.Page;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -61,7 +61,7 @@ import java.util.Set;
 )
 public class InvoiceIssuedTrigger extends AbstractDeelTrigger implements PollingTriggerInterface, TriggerOutput<InvoiceIssuedTrigger.Output> {
 
-    private static final TypeReference<DeelPage<DeelInvoice>> INVOICES_PAGE_TYPE_REF = new TypeReference<>() {};
+    private static final TypeReference<Page<Invoice>> INVOICES_PAGE_TYPE_REF = new TypeReference<>() {};
 
     @Override
     public Optional<Execution> evaluate(ConditionContext conditionContext, TriggerContext context) throws Exception {
@@ -77,15 +77,15 @@ public class InvoiceIssuedTrigger extends AbstractDeelTrigger implements Polling
         params.put("limit", 100);
         params.put("offset", 0);
 
-        List<DeelInvoice> allInvoices = new ArrayList<>();
+        List<Invoice> allInvoices = new ArrayList<>();
         boolean hasMore = true;
         int offset = 0;
 
         while (hasMore) {
             params.put("offset", offset);
 
-            DeelPage<DeelInvoice> page = request(runContext, "/invoices", "GET", params, INVOICES_PAGE_TYPE_REF);
-            List<DeelInvoice> pageData =
+            Page<Invoice> page = request(runContext, "/invoices", "GET", params, INVOICES_PAGE_TYPE_REF);
+            List<Invoice> pageData =
                 page != null && page.getData() != null
                     ? page.getData()
                     : new ArrayList<>();
@@ -107,19 +107,19 @@ public class InvoiceIssuedTrigger extends AbstractDeelTrigger implements Polling
             offset += pageData.size();
         }
 
-        List<DeelInvoice> invoices = allInvoices;
+        List<Invoice> invoices = allInvoices;
 
         invoices.sort(Comparator
-            .comparing((DeelInvoice invoice) -> eventTime(invoice),
+            .comparing((Invoice invoice) -> eventTime(invoice),
                 Comparator.nullsFirst(AbstractDeelTrigger::compareTimestamps))
-            .thenComparing(DeelInvoice::getId, Comparator.nullsFirst(String::compareTo)));
+            .thenComparing(Invoice::getId, Comparator.nullsFirst(String::compareTo)));
 
         List<String> seen = new ArrayList<>(state.getSeen());
         Set<String> seenSet = new LinkedHashSet<>(seen);
         String watermark = state.getWatermark();
         List<Map<String, Object>> pending = new ArrayList<>(state.getPending());
 
-        for (DeelInvoice invoice : invoices) {
+        for (Invoice invoice : invoices) {
             String id = invoice.getId();
             if (id == null) {
                 continue;
@@ -140,7 +140,7 @@ public class InvoiceIssuedTrigger extends AbstractDeelTrigger implements Polling
                     Map<String, Object> pendingEvent = new HashMap<>();
                     pendingEvent.put("event", "issued");
                     pendingEvent.put("id", id);
-                    pendingEvent.put("record", DeelInvoice.toMap(invoice));
+                    pendingEvent.put("record", Invoice.toMap(invoice));
                     pending.add(pendingEvent);
                 }
             }
@@ -195,7 +195,7 @@ public class InvoiceIssuedTrigger extends AbstractDeelTrigger implements Polling
             .build()));
     }
 
-    private String eventTime(DeelInvoice invoice) {
+    private String eventTime(Invoice invoice) {
         if (!isBlank(invoice.getIssuedAt())) {
             return invoice.getIssuedAt();
         }

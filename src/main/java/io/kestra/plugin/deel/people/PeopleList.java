@@ -11,9 +11,9 @@ import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.plugin.deel.connection.AbstractDeelConnection;
-import io.kestra.plugin.deel.model.DeelPage;
-import io.kestra.plugin.deel.model.DeelPerson;
-import io.kestra.plugin.deel.model.DeelPagination;
+import io.kestra.plugin.deel.model.Page;
+import io.kestra.plugin.deel.model.Person;
+import io.kestra.plugin.deel.model.Pagination;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -133,8 +133,8 @@ public class PeopleList extends AbstractDeelConnection implements RunnableTask<P
     @Builder.Default
     private Property<FetchType> fetchType = Property.ofValue(FetchType.FETCH);
 
-    // TypeReference for DeelPage<DeelPerson> to preserve generic type information
-    private static final TypeReference<DeelPage<DeelPerson>> PEOPLE_PAGE_TYPE_REF = new TypeReference<>() {};
+    // TypeReference for Page<Person> to preserve generic type information
+    private static final TypeReference<Page<Person>> PEOPLE_PAGE_TYPE_REF = new TypeReference<>() {};
 
     @Override
     public Output run(RunContext runContext) throws Exception {
@@ -148,7 +148,7 @@ public class PeopleList extends AbstractDeelConnection implements RunnableTask<P
         params.put("limit", Math.min(rLimit, 100));
         params.put("offset", rOffset);
 
-        DeelPage<DeelPerson> page = request(
+        Page<Person> page = request(
             runContext,
             "/v2/people",
             "GET",
@@ -156,8 +156,8 @@ public class PeopleList extends AbstractDeelConnection implements RunnableTask<P
             PEOPLE_PAGE_TYPE_REF
         );
 
-        List<DeelPerson> people = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
-        DeelPagination pagination = page != null ? page.getPage() : null;
+        List<Person> people = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
+        Pagination pagination = page != null ? page.getPage() : null;
 
         logger.debug("Retrieved {} people (total: {})", people.size(), pagination != null ? pagination.getTotalRows() : "unknown");
 
@@ -177,7 +177,7 @@ public class PeopleList extends AbstractDeelConnection implements RunnableTask<P
         return params;
     }
 
-    private Output handleFetch(RunContext runContext, List<DeelPerson> people, DeelPagination pagination, FetchType fetchType) throws Exception {
+    private Output handleFetch(RunContext runContext, List<Person> people, Pagination pagination, FetchType fetchType) throws Exception {
         List<Map<String, Object>> mapped = people.stream()
             .map(this::personToMap)
             .toList();
@@ -214,8 +214,8 @@ public class PeopleList extends AbstractDeelConnection implements RunnableTask<P
         };
     }
 
-    private Map<String, Object> personToMap(DeelPerson person) {
-        return DeelPerson.toMap(person);
+    private Map<String, Object> personToMap(Person person) {
+        return Person.toMap(person);
     }
 
     @Builder

@@ -10,9 +10,9 @@ import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.plugin.deel.connection.AbstractDeelConnection;
-import io.kestra.plugin.deel.model.DeelDeelInvoice;
-import io.kestra.plugin.deel.model.DeelPage;
-import io.kestra.plugin.deel.model.DeelPagination;
+import io.kestra.plugin.deel.model.DeelInvoice;
+import io.kestra.plugin.deel.model.Page;
+import io.kestra.plugin.deel.model.Pagination;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -79,7 +79,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
     @Builder.Default
     private Property<FetchType> fetchType = Property.ofValue(FetchType.FETCH);
 
-    private static final TypeReference<DeelPage<DeelDeelInvoice>> DEEL_INVOICES_PAGE_TYPE_REF = new TypeReference<>() {};
+    private static final TypeReference<Page<DeelInvoice>> DEEL_INVOICES_PAGE_TYPE_REF = new TypeReference<>() {};
 
     @Override
     public Output run(RunContext runContext) throws Exception {
@@ -92,7 +92,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
         params.put("limit", rLimit);
         params.put("offset", rOffset);
 
-        DeelPage<DeelDeelInvoice> page = request(
+        Page<DeelInvoice> page = request(
             runContext,
             "/invoices/deel",
             "GET",
@@ -100,8 +100,8 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
             DEEL_INVOICES_PAGE_TYPE_REF
         );
 
-        java.util.List<DeelDeelInvoice> invoices = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
-        DeelPagination pagination = page != null ? page.getPage() : null;
+        java.util.List<DeelInvoice> invoices = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
+        Pagination pagination = page != null ? page.getPage() : null;
 
         logger.debug("Retrieved {} Deel invoices (total: {})", invoices.size(), pagination != null ? pagination.getTotalRows() : "unknown");
 
@@ -109,7 +109,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
         return handleFetch(runContext, invoices, pagination, resolvedFetchType);
     }
 
-    private Output handleFetch(RunContext runContext, java.util.List<DeelDeelInvoice> invoices, DeelPagination pagination, FetchType fetchType) throws Exception {
+    private Output handleFetch(RunContext runContext, java.util.List<DeelInvoice> invoices, Pagination pagination, FetchType fetchType) throws Exception {
         java.util.List<Map<String, Object>> mapped = invoices.stream()
             .map(this::invoiceToMap)
             .toList();
@@ -146,7 +146,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
         };
     }
 
-    private Map<String, Object> invoiceToMap(DeelDeelInvoice invoice) {
+    private Map<String, Object> invoiceToMap(DeelInvoice invoice) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", invoice.getId());
         map.put("label", invoice.getLabel());

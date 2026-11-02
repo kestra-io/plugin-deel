@@ -9,7 +9,7 @@ import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.deel.connection.AbstractDeelConnection;
-import io.kestra.plugin.deel.model.DeelContract;
+import io.kestra.plugin.deel.model.Contract;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -53,8 +53,8 @@ public class ContractsGet extends AbstractDeelConnection implements RunnableTask
     @PluginProperty(group = "main")
     private Property<String> contractId;
 
-    // TypeReference for DeelContract to preserve generic type information
-    private static final TypeReference<DeelContract> CONTRACT_TYPE_REF = new TypeReference<>() {};
+    // TypeReference for Contract to preserve generic type information
+    private static final TypeReference<Contract> CONTRACT_TYPE_REF = new TypeReference<>() {};
 
     @Override
     public Output run(RunContext runContext) throws Exception {
@@ -62,7 +62,7 @@ public class ContractsGet extends AbstractDeelConnection implements RunnableTask
 
         String rContractId = runContext.render(this.contractId).as(String.class).orElseThrow(() -> new IllegalArgumentException("contractId is required"));
 
-        DeelContract contract = request(
+        Contract contract = request(
             runContext,
             "/v2/contracts/" + rContractId,
             "GET",
@@ -81,7 +81,7 @@ public class ContractsGet extends AbstractDeelConnection implements RunnableTask
             .build();
     }
 
-    private Map<String, Object> contractToMap(DeelContract contract) {
+    private Map<String, Object> contractToMap(Contract contract) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", contract.getId());
         map.put("title", contract.getTitle());

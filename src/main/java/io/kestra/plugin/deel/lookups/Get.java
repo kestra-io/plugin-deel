@@ -8,12 +8,12 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.deel.connection.AbstractDeelConnection;
-import io.kestra.plugin.deel.model.DeelCountry;
-import io.kestra.plugin.deel.model.DeelCurrency;
-import io.kestra.plugin.deel.model.DeelJobTitle;
-import io.kestra.plugin.deel.model.DeelListResponse;
-import io.kestra.plugin.deel.model.DeelPage;
-import io.kestra.plugin.deel.model.DeelSeniority;
+import io.kestra.plugin.deel.model.Country;
+import io.kestra.plugin.deel.model.Currency;
+import io.kestra.plugin.deel.model.JobTitle;
+import io.kestra.plugin.deel.model.ListResponse;
+import io.kestra.plugin.deel.model.Page;
+import io.kestra.plugin.deel.model.Seniority;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
@@ -96,10 +96,10 @@ public class Get extends AbstractDeelConnection implements RunnableTask<Get.Outp
         SENIORITIES
     }
 
-    private static final TypeReference<DeelListResponse<DeelCountry>> COUNTRIES_TYPE_REF = new TypeReference<>() {};
-    private static final TypeReference<DeelListResponse<DeelCurrency>> CURRENCIES_TYPE_REF = new TypeReference<>() {};
-    private static final TypeReference<DeelPage<DeelJobTitle>> JOB_TITLES_TYPE_REF = new TypeReference<>() {};
-    private static final TypeReference<DeelListResponse<DeelSeniority>> SENIORITIES_TYPE_REF = new TypeReference<>() {};
+    private static final TypeReference<ListResponse<Country>> COUNTRIES_TYPE_REF = new TypeReference<>() {};
+    private static final TypeReference<ListResponse<Currency>> CURRENCIES_TYPE_REF = new TypeReference<>() {};
+    private static final TypeReference<Page<JobTitle>> JOB_TITLES_TYPE_REF = new TypeReference<>() {};
+    private static final TypeReference<ListResponse<Seniority>> SENIORITIES_TYPE_REF = new TypeReference<>() {};
 
     @Override
     public Output run(RunContext runContext) throws Exception {
@@ -130,7 +130,7 @@ public class Get extends AbstractDeelConnection implements RunnableTask<Get.Outp
     }
 
     private List<Map<String, Object>> fetchCountries(RunContext runContext, Logger logger) throws Exception {
-        DeelListResponse<DeelCountry> response = request(
+        ListResponse<Country> response = request(
             runContext,
             "/lookups/countries",
             "GET",
@@ -138,7 +138,7 @@ public class Get extends AbstractDeelConnection implements RunnableTask<Get.Outp
             COUNTRIES_TYPE_REF
         );
 
-        List<DeelCountry> countries = response != null && response.getData() != null ? response.getData() : new ArrayList<>();
+        List<Country> countries = response != null && response.getData() != null ? response.getData() : new ArrayList<>();
         logger.debug("Retrieved {} countries", countries.size());
 
         return countries.stream()
@@ -157,7 +157,7 @@ public class Get extends AbstractDeelConnection implements RunnableTask<Get.Outp
     }
 
     private List<Map<String, Object>> fetchCurrencies(RunContext runContext, Logger logger) throws Exception {
-        DeelListResponse<DeelCurrency> response = request(
+        ListResponse<Currency> response = request(
             runContext,
             "/lookups/currencies",
             "GET",
@@ -165,7 +165,7 @@ public class Get extends AbstractDeelConnection implements RunnableTask<Get.Outp
             CURRENCIES_TYPE_REF
         );
 
-        List<DeelCurrency> currencies = response != null && response.getData() != null ? response.getData() : new ArrayList<>();
+        List<Currency> currencies = response != null && response.getData() != null ? response.getData() : new ArrayList<>();
         logger.debug("Retrieved {} currencies", currencies.size());
 
         return currencies.stream()
@@ -192,7 +192,7 @@ public class Get extends AbstractDeelConnection implements RunnableTask<Get.Outp
         Map<String, Object> params = new HashMap<>();
         runContext.render(this.afterCursor).as(String.class).filter(s -> !s.isBlank()).ifPresent(v -> params.put("after_cursor", v));
 
-        DeelPage<DeelJobTitle> page = request(
+        Page<JobTitle> page = request(
             runContext,
             "/lookups/job-titles",
             "GET",
@@ -200,7 +200,7 @@ public class Get extends AbstractDeelConnection implements RunnableTask<Get.Outp
             JOB_TITLES_TYPE_REF
         );
 
-        List<DeelJobTitle> jobTitles = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
+        List<JobTitle> jobTitles = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
         logger.debug("Retrieved {} job titles", jobTitles.size());
 
         String nextCursor = null;
@@ -224,7 +224,7 @@ public class Get extends AbstractDeelConnection implements RunnableTask<Get.Outp
         Map<String, Object> params = new HashMap<>();
         runContext.render(this.isEorContract).as(Boolean.class).ifPresent(v -> params.put("is_eor_contract", v));
 
-        DeelListResponse<DeelSeniority> response = request(
+        ListResponse<Seniority> response = request(
             runContext,
             "/lookups/seniorities",
             "GET",
@@ -232,7 +232,7 @@ public class Get extends AbstractDeelConnection implements RunnableTask<Get.Outp
             SENIORITIES_TYPE_REF
         );
 
-        List<DeelSeniority> seniorities = response != null && response.getData() != null ? response.getData() : new ArrayList<>();
+        List<Seniority> seniorities = response != null && response.getData() != null ? response.getData() : new ArrayList<>();
         logger.debug("Retrieved {} seniority levels", seniorities.size());
 
         return seniorities.stream()

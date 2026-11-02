@@ -11,8 +11,8 @@ import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.plugin.deel.connection.AbstractDeelConnection;
-import io.kestra.plugin.deel.model.DeelTimeOff;
-import io.kestra.plugin.deel.model.DeelTimeOffPage;
+import io.kestra.plugin.deel.model.TimeOff;
+import io.kestra.plugin.deel.model.TimeOffPage;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -123,7 +123,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
     @Builder.Default
     private Property<FetchType> fetchType = Property.ofValue(FetchType.FETCH);
 
-    private static final TypeReference<DeelTimeOffPage> TIME_OFF_PAGE_TYPE_REF = new TypeReference<>() {};
+    private static final TypeReference<TimeOffPage> TIME_OFF_PAGE_TYPE_REF = new TypeReference<>() {};
 
     @Override
     public Output run(RunContext runContext) throws Exception {
@@ -132,7 +132,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
         String rProfileId = runContext.render(this.hrisProfileId).as(String.class).orElseThrow(() -> new IllegalArgumentException("hrisProfileId is required"));
         Map<String, Object> params = buildQueryParams(runContext);
 
-        DeelTimeOffPage page = request(
+        TimeOffPage page = request(
             runContext,
             "/time_offs/profile/" + rProfileId,
             "GET",
@@ -140,7 +140,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
             TIME_OFF_PAGE_TYPE_REF
         );
 
-        java.util.List<DeelTimeOff> timeOffs = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
+        java.util.List<TimeOff> timeOffs = page != null && page.getData() != null ? page.getData() : new ArrayList<>();
         Long total = page != null && page.getCount() != null ? page.getCount().longValue() : (long) timeOffs.size();
 
         // Extract next cursor for pagination
@@ -164,7 +164,7 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
         return params;
     }
 
-    private Output handleFetch(RunContext runContext, java.util.List<DeelTimeOff> timeOffs, Long total, FetchType fetchType, String nextCursor) throws Exception {
+    private Output handleFetch(RunContext runContext, java.util.List<TimeOff> timeOffs, Long total, FetchType fetchType, String nextCursor) throws Exception {
         java.util.List<Map<String, Object>> mapped = timeOffs.stream()
             .map(this::timeOffToMap)
             .toList();
@@ -209,8 +209,8 @@ public class List extends AbstractDeelConnection implements RunnableTask<List.Ou
         };
     }
 
-    private Map<String, Object> timeOffToMap(DeelTimeOff timeOff) {
-        return DeelTimeOff.toMap(timeOff);
+    private Map<String, Object> timeOffToMap(TimeOff timeOff) {
+        return TimeOff.toMap(timeOff);
     }
 
     @Builder

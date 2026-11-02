@@ -12,8 +12,8 @@ import io.kestra.core.models.triggers.TriggerContext;
 import io.kestra.core.models.triggers.TriggerOutput;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.deel.triggers.AbstractDeelTrigger;
-import io.kestra.plugin.deel.model.DeelPage;
-import io.kestra.plugin.deel.model.DeelPerson;
+import io.kestra.plugin.deel.model.Page;
+import io.kestra.plugin.deel.model.Person;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -77,7 +77,7 @@ public class PersonTrigger extends AbstractDeelTrigger implements PollingTrigger
     @Builder.Default
     private Property<java.util.List<PersonEvent>> events = Property.ofValue(java.util.List.of(PersonEvent.created, PersonEvent.hiring_status_changed));
 
-    private static final TypeReference<DeelPage<DeelPerson>> PEOPLE_PAGE_TYPE_REF = new TypeReference<>() {};
+    private static final TypeReference<Page<Person>> PEOPLE_PAGE_TYPE_REF = new TypeReference<>() {};
 
     @Override
     public Optional<Execution> evaluate(ConditionContext conditionContext, TriggerContext context) throws Exception {
@@ -90,7 +90,7 @@ public class PersonTrigger extends AbstractDeelTrigger implements PollingTrigger
 
         List<PersonEvent> enabledEvents = runContext.render(this.events).asList(PersonEvent.class);
 
-        List<DeelPerson> allPeople = new ArrayList<>();
+        List<Person> allPeople = new ArrayList<>();
         int offset = 0;
         int limit = 100;
         boolean hasMore = true;
@@ -103,8 +103,8 @@ public class PersonTrigger extends AbstractDeelTrigger implements PollingTrigger
                 params.put("updated_since", state.getWatermark());
             }
 
-            DeelPage<DeelPerson> page = request(runContext, "/v2/people", "GET", params, PEOPLE_PAGE_TYPE_REF);
-            List<DeelPerson> pageData =
+            Page<Person> page = request(runContext, "/v2/people", "GET", params, PEOPLE_PAGE_TYPE_REF);
+            List<Person> pageData =
                 page != null && page.getData() != null
                     ? page.getData()
                     : new ArrayList<>();
@@ -127,18 +127,18 @@ public class PersonTrigger extends AbstractDeelTrigger implements PollingTrigger
             offset += pageData.size();
         }
 
-        List<DeelPerson> people = allPeople;
+        List<Person> people = allPeople;
 
         people.sort(Comparator
-            .comparing((DeelPerson person) -> person.getUpdatedAt() != null ? person.getUpdatedAt() : person.getCreatedAt(),
+            .comparing((Person person) -> person.getUpdatedAt() != null ? person.getUpdatedAt() : person.getCreatedAt(),
                 Comparator.nullsFirst(AbstractDeelTrigger::compareTimestamps))
-            .thenComparing(DeelPerson::getId, Comparator.nullsFirst(String::compareTo)));
+            .thenComparing(Person::getId, Comparator.nullsFirst(String::compareTo)));
 
         Map<String, String> statuses = new HashMap<>(state.getStatuses());
         String watermark = state.getWatermark();
         List<Map<String, Object>> pending = new ArrayList<>(state.getPending());
 
-        for (DeelPerson person : people) {
+        for (Person person : people) {
             String id = person.getId();
             if (id == null) {
                 continue;
@@ -156,14 +156,14 @@ public class PersonTrigger extends AbstractDeelTrigger implements PollingTrigger
             if (!statuses.containsKey(id)) {
                 statuses.put(id, person.getHiringStatus());
                 if (enabledEvents.contains(PersonEvent.created) && isNewRecord(person.getCreatedAt(), state.getWatermark())) {
-                    pending.add(pendingEvent(PersonEvent.created.name(), id, null, DeelPerson.toMap(person)));
+                    pending.add(pendingEvent(PersonEvent.created.name(), id, null, Person.toMap(person)));
                 }
             } else {
                 String previous = statuses.get(id);
                 String current = person.getHiringStatus();
                 statuses.put(id, current);
                 if (!equalsNullable(previous, current) && enabledEvents.contains(PersonEvent.hiring_status_changed)) {
-                    pending.add(pendingEvent(PersonEvent.hiring_status_changed.name(), id, previous, DeelPerson.toMap(person)));
+                    pending.add(pendingEvent(PersonEvent.hiring_status_changed.name(), id, previous, Person.toMap(person)));
                 }
             }
         }

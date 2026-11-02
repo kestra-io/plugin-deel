@@ -13,8 +13,8 @@ import io.kestra.core.models.triggers.TriggerContext;
 import io.kestra.core.models.triggers.TriggerOutput;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.deel.triggers.AbstractDeelTrigger;
-import io.kestra.plugin.deel.model.DeelTimeOff;
-import io.kestra.plugin.deel.model.DeelTimeOffPage;
+import io.kestra.plugin.deel.model.TimeOff;
+import io.kestra.plugin.deel.model.TimeOffPage;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -91,7 +91,7 @@ public class TimeOffTrigger extends AbstractDeelTrigger implements PollingTrigge
         List.of(TimeOffEvent.requested, TimeOffEvent.approved)
     );
 
-    private static final TypeReference<DeelTimeOffPage> TIME_OFF_PAGE_TYPE_REF = new TypeReference<>() {};
+    private static final TypeReference<TimeOffPage> TIME_OFF_PAGE_TYPE_REF = new TypeReference<>() {};
 
     @Override
     public Optional<Execution> evaluate(ConditionContext conditionContext, TriggerContext context) throws Exception {
@@ -105,7 +105,7 @@ public class TimeOffTrigger extends AbstractDeelTrigger implements PollingTrigge
         String rProfileId = runContext.render(this.hrisProfileId).as(String.class).orElseThrow(() -> new IllegalArgumentException("hrisProfileId is required"));
         List<TimeOffEvent> enabledEvents = runContext.render(this.events).asList(TimeOffEvent.class);
 
-        List<DeelTimeOff> allTimeOffs = new ArrayList<>();
+        List<TimeOff> allTimeOffs = new ArrayList<>();
         int offset = 0;
         int limit = 100;
         String cursor = null;
@@ -120,7 +120,7 @@ public class TimeOffTrigger extends AbstractDeelTrigger implements PollingTrigge
                 params.put("offset", offset);
             }
 
-            DeelTimeOffPage page = request(
+            TimeOffPage page = request(
                 runContext,
                 "/time_offs/profile/" + rProfileId,
                 "GET",
@@ -130,7 +130,7 @@ public class TimeOffTrigger extends AbstractDeelTrigger implements PollingTrigge
             if (page == null) {
                 break;
             }
-            List<DeelTimeOff> pageData = page.getData() != null ? page.getData() : new ArrayList<>();
+            List<TimeOff> pageData = page.getData() != null ? page.getData() : new ArrayList<>();
             if (pageData.isEmpty()) {
                 break;
             }
@@ -146,18 +146,18 @@ public class TimeOffTrigger extends AbstractDeelTrigger implements PollingTrigge
             offset += pageData.size();
         }
 
-        List<DeelTimeOff> timeOffs = allTimeOffs;
+        List<TimeOff> timeOffs = allTimeOffs;
 
         timeOffs.sort(Comparator
-            .comparing((DeelTimeOff timeOff) -> recordTime(timeOff),
+            .comparing((TimeOff timeOff) -> recordTime(timeOff),
                 Comparator.nullsFirst(AbstractDeelTrigger::compareTimestamps))
-            .thenComparing(DeelTimeOff::getId, Comparator.nullsFirst(String::compareTo)));
+            .thenComparing(TimeOff::getId, Comparator.nullsFirst(String::compareTo)));
 
         Map<String, String> statuses = new HashMap<>(state.getStatuses());
         String watermark = state.getWatermark();
         List<Map<String, Object>> pending = new ArrayList<>(state.getPending());
 
-        for (DeelTimeOff timeOff : timeOffs) {
+        for (TimeOff timeOff : timeOffs) {
             String id = timeOff.getId();
             if (id == null) {
                 continue;
@@ -176,7 +176,7 @@ public class TimeOffTrigger extends AbstractDeelTrigger implements PollingTrigge
                 statuses.put(id, timeOff.getStatus());
                 TimeOffEvent event = eventFor(timeOff.getStatus());
                 if (event != null && enabledEvents.contains(event) && isNewRecord(recordTime, state.getWatermark())) {
-                    pending.add(pendingEvent(event.name(), id, DeelTimeOff.toMap(timeOff)));
+                    pending.add(pendingEvent(event.name(), id, TimeOff.toMap(timeOff)));
                 }
             } else {
                 String previous = statuses.get(id);
@@ -184,7 +184,7 @@ public class TimeOffTrigger extends AbstractDeelTrigger implements PollingTrigge
                 statuses.put(id, current);
                 TimeOffEvent event = eventFor(current);
                 if (!equalsNullable(previous, current) && event != null && enabledEvents.contains(event)) {
-                    pending.add(pendingEvent(event.name(), id, DeelTimeOff.toMap(timeOff)));
+                    pending.add(pendingEvent(event.name(), id, TimeOff.toMap(timeOff)));
                 }
             }
         }
@@ -240,7 +240,7 @@ public class TimeOffTrigger extends AbstractDeelTrigger implements PollingTrigge
             .build()));
     }
 
-    private String recordTime(DeelTimeOff timeOff) {
+    private String recordTime(TimeOff timeOff) {
         if (!isBlank(timeOff.getUpdatedAt())) {
             return timeOff.getUpdatedAt();
         }
