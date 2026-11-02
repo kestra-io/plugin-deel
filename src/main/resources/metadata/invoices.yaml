@@ -1,0 +1,5 @@
+group: io.kestra.plugin.deel.invoices
+name: "invoices"
+title: "Deel Invoices"
+description: "Deel workforce invoice tasks and triggers"
+body: ""

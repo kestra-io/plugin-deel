@@ -1,0 +1,5 @@
+group: io.kestra.plugin.deel.contracts
+name: "contracts"
+title: "Deel Contracts"
+description: "Deel contracts tasks and triggers"
+body: ""
