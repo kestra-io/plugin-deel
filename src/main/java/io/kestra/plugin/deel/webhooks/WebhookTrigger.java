@@ -11,6 +11,7 @@ import io.kestra.plugin.core.trigger.AbstractWebhookTrigger;
 import io.kestra.plugin.core.trigger.WebhookContext;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
+import io.kestra.core.services.WebhookService;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
@@ -22,6 +23,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HexFormat;
@@ -74,6 +77,8 @@ public class WebhookTrigger extends AbstractWebhookTrigger implements TriggerOut
     private static final Logger LOG = LoggerFactory.getLogger(WebhookTrigger.class);
 
     public static final String SIGNATURE_HEADER = "x-deel-signature";
+
+    private static final Method START_EXECUTION_METHOD = findStartExecutionMethod();
 
     @Schema(
         title = "Webhook signing key",
@@ -140,10 +145,34 @@ public class WebhookTrigger extends AbstractWebhookTrigger implements TriggerOut
             return Mono.just(HttpResponse.of(HttpResponse.Status.OK, Map.of("ignored", true)));
         }
 
-        return context.webhookService()
-            .startExecution(execution.get())
+        return startExecution(context.webhookService(), execution.get())
             .doOnSuccess(ignored -> logger.debug("Triggering on Deel webhook event '{}'", eventType))
             .thenReturn(HttpResponse.of(HttpResponse.Status.OK, Map.of("id", execution.get().getId())));
+    }
+
+    /**
+     * {@code WebhookService.startExecution} is {@code void ... throws QueueException} on Kestra 1.x and returns a
+     * {@code Mono} on Kestra 2.x, so it is called reflectively to keep a single artifact binary-compatible with both.
+     */
+    private static Mono<Void> startExecution(WebhookService service, Execution execution) {
+        return Mono.defer(() -> {
+            try {
+                Object result = START_EXECUTION_METHOD.invoke(service, execution);
+                return result instanceof Mono<?> mono ? mono.then() : Mono.<Void>empty();
+            } catch (InvocationTargetException e) {
+                return Mono.error(e.getCause());
+            } catch (IllegalAccessException e) {
+                return Mono.error(new IllegalStateException("WebhookService.startExecution is not accessible", e));
+            }
+        });
+    }
+
+    private static Method findStartExecutionMethod() {
+        try {
+            return WebhookService.class.getMethod("startExecution", Execution.class);
+        } catch (NoSuchMethodException e) {
+            throw new ExceptionInInitializerError("WebhookService.startExecution is unavailable on this Kestra version: " + e);
+        }
     }
 
     /**

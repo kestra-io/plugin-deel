@@ -65,7 +65,7 @@ public abstract class AbstractDeelTriggerTest extends AbstractDeelTest {
     }
 
     protected ConditionContext conditionContext(RunContext runContext) {
-        return new ConditionContext(triggerFlow, null, runContext, Map.of());
+        return ConditionContext.builder().flow(triggerFlow).runContext(runContext).variables(Map.of()).build();
     }
 
     protected TriggerContext triggerContext(String flowId, String triggerId) {

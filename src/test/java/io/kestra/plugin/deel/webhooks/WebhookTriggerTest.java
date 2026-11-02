@@ -3,10 +3,8 @@ package io.kestra.plugin.deel.webhooks;
 import io.kestra.core.http.HttpRequest;
 import io.kestra.core.http.HttpResponse;
 import io.kestra.core.models.executions.Execution;
-import io.kestra.core.models.flows.Flow;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.Output;
-import io.kestra.core.models.triggers.AbstractTrigger;
 import io.kestra.plugin.core.trigger.AbstractWebhookTrigger;
 import io.kestra.plugin.core.trigger.WebhookContext;
 import io.kestra.core.runners.RunContext;
@@ -16,7 +14,12 @@ import io.kestra.plugin.deel.AbstractDeelTest;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.mockito.stubbing.Answer;
+import reactor.core.publisher.Mono;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -47,38 +50,54 @@ class WebhookTriggerTest extends AbstractDeelTest {
         {"meta":{"type":"contract.created","organization_id":"org-1"},"resource":{"id":"c1"},"timestamp":"2024-06-01T00:00:00Z"}
         """.trim();
 
-    /** WebhookService double that records executions without needing server-side queues. */
-    static class FakeWebhookService extends WebhookService {
+    /**
+     * Records executions without needing server-side queues. {@code WebhookService.startExecution} returns
+     * {@code void} on Kestra 1.x and a {@code Mono} on 2.x, so the service is a Mockito mock whose answer adapts
+     * to the running version instead of a subclass override, which could only compile against one of them.
+     */
+    static class FakeWebhookService {
         final RunContext runContext;
+        final WebhookService service;
         Output capturedOutput;
         boolean executionStarted;
 
         FakeWebhookService(RunContext runContext) {
             this.runContext = runContext;
+            this.service = Mockito.mock(WebhookService.class, (Answer<Object>) invocation -> {
+                Method method = invocation.getMethod();
+                return switch (method.getName()) {
+                    case "runContext" -> runContext;
+                    case "newExecution" -> {
+                        AbstractWebhookTrigger trigger = invocation.getArgument(2);
+                        capturedOutput = invocation.getArgument(3);
+                        yield Optional.of(Execution.builder()
+                            .id("test-execution")
+                            .namespace("company.team")
+                            .flowId("webhook-flow")
+                            .state(new io.kestra.core.models.flows.State())
+                            .trigger(io.kestra.core.models.executions.ExecutionTrigger.of(trigger, capturedOutput))
+                            .build());
+                    }
+                    case "startExecution" -> {
+                        executionStarted = true;
+                        yield method.getReturnType().equals(void.class) ? null : Mono.empty();
+                    }
+                    default -> throw new UnsupportedOperationException(method.getName());
+                };
+            });
         }
+    }
 
-        @Override
-        public RunContext runContext(Flow flow, AbstractTrigger trigger) {
-            return runContext;
-        }
-
-        @Override
-        public Optional<Execution> newExecution(WebhookContext context, Flow flow, AbstractWebhookTrigger trigger, Output output) {
-            capturedOutput = output;
-            return Optional.of(Execution.builder()
-                .id("test-execution")
-                .namespace("company.team")
-                .flowId("webhook-flow")
-                .state(new io.kestra.core.models.flows.State())
-                .trigger(io.kestra.core.models.executions.ExecutionTrigger.of(trigger, output))
-                .build());
-        }
-
-        @Override
-        public reactor.core.publisher.Mono<io.kestra.core.async.AsyncOperationProcessedEvent> startExecution(Execution execution) {
-            executionStarted = true;
-            return reactor.core.publisher.Mono.empty();
-        }
+    /** {@code WebhookContext} has 5 components on Kestra 1.x and 7 on 2.x; extra components are left null. */
+    private static WebhookContext newWebhookContext(HttpRequest request, WebhookTrigger trigger, FakeWebhookService service) throws Exception {
+        Constructor<?> constructor = WebhookContext.class.getConstructors()[0];
+        Object[] args = new Object[constructor.getParameterCount()];
+        args[0] = request;
+        args[1] = "/webhooks/deel";
+        args[2] = null;
+        args[3] = trigger;
+        args[4] = service.service;
+        return (WebhookContext) constructor.newInstance(args);
     }
 
     private WebhookTrigger buildTrigger(List<String> events) {
@@ -103,7 +122,7 @@ class WebhookTriggerTest extends AbstractDeelTest {
             body,
             headers
         );
-        return new WebhookContext(request, "/webhooks/deel", null, trigger, service, null, null);
+        return newWebhookContext(request, trigger, service);
     }
 
     private RunContext runContext() {
@@ -226,7 +245,7 @@ class WebhookTriggerTest extends AbstractDeelTest {
             parsedBody,
             Map.of(WebhookTrigger.SIGNATURE_HEADER, List.of(signature))
         );
-        WebhookContext context = new WebhookContext(request, "/webhooks/deel", null, trigger, service, null, null);
+        WebhookContext context = newWebhookContext(request, trigger, service);
 
         HttpResponse<?> response = trigger.evaluate(context).block();
 
