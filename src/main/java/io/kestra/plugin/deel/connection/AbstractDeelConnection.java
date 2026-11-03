@@ -118,7 +118,7 @@ public abstract class AbstractDeelConnection extends Task {
 
     /**
      * Execute an HTTP request and deserialize the response using a TypeReference to preserve generic type information.
-     * This method avoids type erasure issues with generic types like Page<Person>.
+     * This method avoids type erasure issues with generic types like {@code Page<Person>}.
      */
     @SuppressWarnings("unchecked")
     protected <T> T request(RunContext runContext, String path, String method, Map<String, Object> queryParams, TypeReference<T> typeRef) throws Exception {
